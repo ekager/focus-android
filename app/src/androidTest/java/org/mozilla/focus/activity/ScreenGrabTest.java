@@ -298,7 +298,8 @@ public class ScreenGrabTest {
         /* scroll down */
         FirstSelection.click();
         mDevice.wait(Until.hasObject(settingsHeading),waitingTime);
-        swipeDownNotificationBar(mDevice);
+        UiScrollable settingsView = new UiScrollable(new UiSelector().scrollable(true));
+        settingsView.scrollToEnd(3);
         Screengrab.screenshot("Settings_View_Bottom");
 
         // Go back
