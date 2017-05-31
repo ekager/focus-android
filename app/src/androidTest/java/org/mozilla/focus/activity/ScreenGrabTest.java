@@ -106,14 +106,33 @@ public class ScreenGrabTest {
         Screengrab.screenshot("IGNORE");
 
         /* Wait for app to load, and take the First View screenshot */
-        UiObject firstViewBtn = mDevice.findObject(new UiSelector()
-        .resourceId("org.mozilla.focus.debug:id/firstrun_exitbutton")
-        .enabled(true));
-        firstViewBtn.waitForExists(waitingTime);
-        Screengrab.screenshot("FirstUI_View");
+        UiObject firstSlide = mDevice.findObject(new UiSelector()
+                .text("Browse like no one’s watching")
+                .enabled(true));
+        UiObject secondSlide = mDevice.findObject(new UiSelector()
+                .text("Power up your privacy")
+                .enabled(true));
+        UiObject lastSlide = mDevice.findObject(new UiSelector()
+                .text("A quick fix when\n" +
+                        "blocking = breaking")
+                .enabled(true));
+        UiObject nextBtn = mDevice.findObject(new UiSelector()
+                .resourceId("org.mozilla.focus.debug:id/next")
+                .enabled(true));
+        UiObject finishBtn = mDevice.findObject(new UiSelector()
+                .resourceId("org.mozilla.focus.debug:id/finish")
+                .enabled(true));
+        firstSlide.waitForExists(waitingTime);
+        Screengrab.screenshot("Onboarding_1_View");
+        nextBtn.click();
+        secondSlide.waitForExists(waitingTime);
+        Screengrab.screenshot("Onboarding_2_View");
+        nextBtn.click();
+        lastSlide.waitForExists(waitingTime);
+        Screengrab.screenshot("Onboarding_last_View");
+        finishBtn.click();
 
         /* Home View*/
-        firstViewBtn.click();
         UiObject urlBar = mDevice.findObject(new UiSelector()
                 .resourceId("org.mozilla.focus.debug:id/fake_urlbar")
                 .clickable(true));
