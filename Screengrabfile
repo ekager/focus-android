@@ -6,13 +6,11 @@ use_tests_in_packages ['org.mozilla.focus.activity']
 app_apk_path 'app/build/outputs/apk/app-focus-webkit-debug.apk'
 tests_apk_path 'app/build/outputs/apk/app-focus-webkit-debug-androidTest.apk'
 
-locales [ar', 'ast', 'az', 'bg', 'bn-BD', 'bn-IN', 'ca', 'cs', 'cy', 'de', 'dsb',
-'el', 'eo', 'es-AR', 'es-CL', 'es-ES', 'es-MX', 'fa', 'fr', 'fy-NL', 'ga-IE', 'he', 
-'hi-IN',  'hsb', 'hu', 'hy-AM', 'id', 'it', 'ja', 'kab', 'ko', 'lo', 'my','nb-NO', 'nl', 
+locales ['kab', 'ko', 'lo', 'my','nb-NO', 'nl', 
 'nn-NO', 'pl', 'pt-BR', 'ro', 'ru', 'sk', 'sl', 'sq', 'sr', 'sv-SE', 'ta', 'th', 
 'tr', 'uk', 'ur', 'zh-CN', 'zh-TW','en-US']
 # clear all previously generated screenshots in your local output directory before creating new ones
-clear_previous_screenshots true
+clear_previous_screenshots false
 
 # For more information about all available options run
 #   fastlane screengrab --help

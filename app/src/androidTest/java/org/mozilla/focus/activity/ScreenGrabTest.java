@@ -276,8 +276,7 @@ public class ScreenGrabTest {
 
         UiObject CancelBtn =  mDevice.findObject(new UiSelector()
                 .resourceId("android:id/button2")
-                .enabled(true)
-                .text("Cancel"));
+                .enabled(true));
         Screengrab.screenshot("Language_Selection");
         CancelBtn.click();
         mDevice.wait(Until.hasObject(settingsHeading),waitingTime);
