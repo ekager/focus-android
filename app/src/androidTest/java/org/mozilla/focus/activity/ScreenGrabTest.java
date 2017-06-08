@@ -17,12 +17,18 @@ import android.support.test.uiautomator.UiSelector;
 import android.support.test.uiautomator.Until;
 import android.text.format.DateUtils;
 
+import junit.framework.Assert;
+
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mozilla.focus.R;
 
+import java.io.IOException;
+
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import tools.fastlane.screengrab.Screengrab;
 import tools.fastlane.screengrab.UiAutomatorScreenshotStrategy;
 import tools.fastlane.screengrab.locale.LocaleTestRule;
@@ -32,11 +38,16 @@ import static android.support.test.espresso.action.ViewActions.click;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 import static android.view.KeyEvent.KEYCODE_ENTER;
+import static junit.framework.Assert.assertTrue;
 import static org.hamcrest.Matchers.allOf;
+import static org.mozilla.focus.activity.TestHelper.browserURLbar;
 import static org.mozilla.focus.fragment.FirstrunFragment.FIRSTRUN_PREF;
 
 @RunWith(AndroidJUnit4.class)
 public class ScreenGrabTest {
+
+    private MockWebServer webServer;
+    private static final String TEST_PATH = "/";
 
     private enum ErrorTypes {
         ERROR_UNKNOWN (-1),
@@ -76,6 +87,32 @@ public class ScreenGrabTest {
                     .putBoolean(FIRSTRUN_PREF, false)
                     .putBoolean(resources.getString(R.string.pref_key_secure), false)
                     .apply();
+
+            webServer = new MockWebServer();
+
+            try {
+                webServer.enqueue(new MockResponse()
+                        .setBody(TestHelper.readTestAsset("image_test.html"))
+                        .addHeader("Set-Cookie", "sphere=battery; Expires=Wed, 21 Oct 2035 07:28:00 GMT;"));
+                webServer.enqueue(new MockResponse()
+                        .setBody(TestHelper.readTestAsset("rabbit.jpg")));
+
+                webServer.start();
+            } catch (IOException e) {
+                throw new AssertionError("Could not start web server", e);
+            }
+        }
+
+        @Override
+        protected void afterActivityFinished() {
+            super.afterActivityFinished();
+
+            try {
+                webServer.close();
+                webServer.shutdown();
+            } catch (IOException e) {
+                throw new AssertionError("Could not stop web server", e);
+            }
         }
     };
 
@@ -306,6 +343,32 @@ public class ScreenGrabTest {
         urlBar.waitForExists(waitingTime);
         urlBar.click();
 
+        /* Take image context menu screenshot */
+        UiObject titleMsg = TestHelper.mDevice.findObject(new UiSelector()
+                .description("focus test page")
+                .enabled(true));
+
+        UiObject rabbitImage = TestHelper.mDevice.findObject(new UiSelector()
+                .description("Smiley face")
+                .enabled(true));
+        UiObject imageMenuTitle = TestHelper.mDevice.findObject(new UiSelector()
+                .resourceId("org.mozilla.focus.debug:id/topPanel")
+                .enabled(true));
+
+        TestHelper.inlineAutocompleteEditText.waitForExists(waitingTime);
+        TestHelper.inlineAutocompleteEditText.clearTextField();
+        TestHelper.inlineAutocompleteEditText.setText(webServer.url(TEST_PATH).toString());
+        TestHelper.pressEnterKey();
+        TestHelper.webView.waitForExists(waitingTime);
+        assertTrue("Website title loaded", titleMsg.exists());
+        Assert.assertTrue(rabbitImage.exists());
+        rabbitImage.dragTo(rabbitImage,7);
+        imageMenuTitle.waitForExists(waitingTime);
+        Assert.assertTrue(imageMenuTitle.exists());
+        Screengrab.screenshot("Image_Context_Menu");
+        TestHelper.mDevice.pressBack();
+        browserURLbar.click();
+
         /* Go to google play market */
         inlineAutocompleteEditText.waitForExists(waitingTime);
         inlineAutocompleteEditText.setText(marketURL);
@@ -322,9 +385,6 @@ public class ScreenGrabTest {
                 .clickable(true));
         mDevice.pressBack();
         urlBar.click();
-        UiObject browserURLbar = mDevice.findObject(new UiSelector()
-                .resourceId("org.mozilla.focus.debug:id/display_url")
-                .clickable(true));
         for (ScreenGrabTest.ErrorTypes error: ScreenGrabTest.ErrorTypes.values()) {
 
             inlineAutocompleteEditText.waitForExists(waitingTime);
