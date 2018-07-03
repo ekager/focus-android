@@ -37,6 +37,7 @@ import org.mozilla.geckoview.GeckoSession;
 import org.mozilla.geckoview.GeckoSessionSettings;
 
 import java.util.concurrent.CountDownLatch;
+
 import kotlin.text.Charsets;
 
 /**
@@ -89,19 +90,18 @@ public class WebViewProvider {
             PreferenceManager.getDefaultSharedPreferences(context)
                     .registerOnSharedPreferenceChangeListener(this);
             geckoSession = createGeckoSession();
-            setGeckoSession();
+            applySettingsAndSetDelegates();
+            setSession(geckoSession, geckoRuntime);
         }
 
-        private void setGeckoSession() {
+        private void applySettingsAndSetDelegates() {
             applyAppSettings();
             updateBlocking();
-
             geckoSession.setContentDelegate(createContentDelegate());
             geckoSession.setProgressDelegate(createProgressDelegate());
             geckoSession.setNavigationDelegate(createNavigationDelegate());
             geckoSession.setTrackingProtectionDelegate(createTrackingProtectionDelegate());
             geckoSession.setPromptDelegate(createPromptDelegate());
-            setSession(geckoSession, geckoRuntime);
         }
 
         private GeckoSession createGeckoSession() {
@@ -309,7 +309,7 @@ public class WebViewProvider {
                     SentryWrapper.INSTANCE.captureGeckoCrash();
                     geckoSession.close();
                     geckoSession = createGeckoSession();
-                    setGeckoSession();
+                    applySettingsAndSetDelegates();
                     geckoSession.open(geckoRuntime);
                     geckoSession.loadUri(currentUrl);
                 }
@@ -472,25 +472,21 @@ public class WebViewProvider {
 
         @Override
         public void restoreWebViewState(Session session) {
+            geckoSession.close();
             final Bundle stateData = session.getWebViewState();
-            final String desiredURL = session.getUrl().getValue();
-            final GeckoSession.SessionState sessionState = stateData.getParcelable("state");
-            if (sessionState != null) {
-                geckoSession.restoreState(sessionState);
-            } else {
-                loadUrl(desiredURL);
-            }
+            final GeckoSession savedSession = stateData.getParcelable("state");
+            geckoSession = savedSession;
+            applySettingsAndSetDelegates();
+            geckoSession.open(geckoRuntime);
+            setSession(geckoSession);
+            loadUrl(session.getUrl().getValue());
         }
 
         @Override
         public void saveWebViewState(@NonNull final Session session) {
-            final CountDownLatch latch = new CountDownLatch(1);
-            saveStateInBackground(latch, session);
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                // State was not saved
-            }
+            final Bundle bundle = new Bundle();
+            bundle.putParcelable("state", geckoSession);
+            session.saveWebViewState(bundle);
         }
 
         private void saveStateInBackground(final CountDownLatch latch, final Session session) {
