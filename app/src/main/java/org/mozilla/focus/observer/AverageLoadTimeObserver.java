@@ -11,6 +11,7 @@ import android.util.Log;
 import org.mozilla.focus.architecture.NonNullObserver;
 import org.mozilla.focus.session.Session;
 import org.mozilla.focus.telemetry.TelemetryWrapper;
+import org.mozilla.focus.utils.UrlUtils;
 
 public class AverageLoadTimeObserver extends NonNullObserver<Boolean> {
 
@@ -26,23 +27,25 @@ public class AverageLoadTimeObserver extends NonNullObserver<Boolean> {
 
     @Override
     protected void onValueChanged(Boolean loading) {
-        if (loading) {
-            if (!loadStarted) {
-                startLoadTime = SystemClock.elapsedRealtime();
-                Log.i(LOG_TAG, "zerdatime " + startLoadTime +
-                        " - page load start");
-                loadStarted = true;
+        if (!session.getUrl().getValue().equals("about:blank") || !UrlUtils.isLocalizedContent(session.getUrl().getValue())) {
+            if (loading) {
+                if (!loadStarted) {
+                    startLoadTime = SystemClock.elapsedRealtime();
+                    Log.i(LOG_TAG, "zerdatime " + startLoadTime +
+                            " - page load start");
+                    loadStarted = true;
 
-            }
-        } else {
-            if (loadStarted) {
-                Log.i(LOG_TAG, "Loaded page at " + session.getUrl().getValue());
-                long endTime = SystemClock.elapsedRealtime();
-                Log.i(LOG_TAG, "zerdatime " + endTime +
-                        " - page load stop");
-                Log.i(LOG_TAG, (endTime - startLoadTime) + " - elapsed load");
-                TelemetryWrapper.addLoadToAverage(endTime - startLoadTime);
-                loadStarted = false;
+                }
+            } else {
+                if (loadStarted) {
+                    Log.i(LOG_TAG, "Loaded page at " + session.getUrl().getValue());
+                    long endTime = SystemClock.elapsedRealtime();
+                    Log.i(LOG_TAG, "zerdatime " + endTime +
+                            " - page load stop");
+                    Log.i(LOG_TAG, (endTime - startLoadTime) + " - elapsed load");
+                    TelemetryWrapper.addLoadToAverage(endTime - startLoadTime);
+                    loadStarted = false;
+                }
             }
         }
     }
