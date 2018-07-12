@@ -472,9 +472,9 @@ public class WebViewProvider {
 
         @Override
         public void restoreWebViewState(Session session) {
-            geckoSession.close();
             final Bundle stateData = session.getWebViewState();
             if (stateData != null) {
+                geckoSession.close();
                 final GeckoSession savedSession = stateData.getParcelable("state");
                 geckoSession = savedSession;
                 webViewTitle = stateData.getString("title");
