@@ -474,18 +474,25 @@ public class WebViewProvider {
         public void restoreWebViewState(Session session) {
             geckoSession.close();
             final Bundle stateData = session.getWebViewState();
-            final GeckoSession savedSession = stateData.getParcelable("state");
-            geckoSession = savedSession;
-            applySettingsAndSetDelegates();
-            geckoSession.open(geckoRuntime);
-            setSession(geckoSession);
-            loadUrl(session.getUrl().getValue());
+            if (stateData != null) {
+                final GeckoSession savedSession = stateData.getParcelable("state");
+                geckoSession = savedSession;
+                webViewTitle = stateData.getString("title");
+                canGoBack = stateData.getBoolean("canGoBack", false);
+                canGoForward = stateData.getBoolean("canGoForward", false);
+                applySettingsAndSetDelegates();
+                geckoSession.open(geckoRuntime);
+                setSession(geckoSession);
+            }
         }
 
         @Override
         public void saveWebViewState(@NonNull final Session session) {
             final Bundle bundle = new Bundle();
             bundle.putParcelable("state", geckoSession);
+            bundle.putBoolean("canGoBack", canGoBack);
+            bundle.putBoolean("canGoForward", canGoForward);
+            bundle.putString("title", webViewTitle);
             session.saveWebViewState(bundle);
         }
 
