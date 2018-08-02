@@ -1,12 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#F9F9FA"
-        android:pathData="M7,4C5.3432,4 4,5.3432 4,7L4,17C4,18.6569 5.3432,20 7,20L17,20C18.6569,20 20,18.6569 20,17L20,7C20,5.3432 18.6569,4 17,4L7,4ZM2,7C2,4.2386 4.2386,2 7,2L17,2C19.7614,2 22,4.2386 22,7L22,17C22,19.7614 19.7614,22 17,22L7,22C4.2386,22 2,19.7614 2,17L2,7Z" />
+<?xml version="1.0" encoding="utf-8"?>
+<!--This Source Code Form is subject to the terms of the Mozilla Public - License, v. 2.0. If a copy of the MPL was not distributed with this - file, You can obtain one at http://mozilla.org/MPL/2.0/.-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#F9F9FA" android:pathData="M7 4C5.343 4 4 5.343 4 7v10c0 1.657 1.343 3 3 3h10c1.657 0 3-1.343 3-3V7c0-1.657-1.343-3-3-3H7zM2 7c0-2.761 2.239-5 5-5h10c2.761 0 5 2.239 5 5v10c0 2.761-2.239 5-5 5H7c-2.761 0-5-2.239-5-5V7z"/>
 </vector>
