@@ -1021,6 +1021,11 @@ public class BrowserFragment extends WebFragment implements LifecycleObserver, V
     public void erase() {
         final IWebView webView = getWebView();
         final Context context = getContext();
+       // urlView.setText("");
+
+        if (webView != null) {
+            webView.cleanup();
+        }
 
         // Notify the user their session has been erased if Talk Back is enabled:
         if (context != null) {
@@ -1033,10 +1038,6 @@ public class BrowserFragment extends WebFragment implements LifecycleObserver, V
                 event.setPackageName(getContext().getPackageName());
                 event.getText().add(getString(R.string.feedback_erase));
             }
-        }
-
-        if (webView != null) {
-            webView.cleanup();
         }
 
         if (session.isCustomTab()) {

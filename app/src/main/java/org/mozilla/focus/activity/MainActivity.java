@@ -241,6 +241,7 @@ public class MainActivity extends LocaleAwareAppCompatActivity {
         transaction
                 .replace(R.id.container, UrlInputFragment.createWithoutSession(), UrlInputFragment.FRAGMENT_TAG)
                 .commit();
+        //fragmentManager.executePendingTransactions();
     }
 
     private void showFirstrun() {
