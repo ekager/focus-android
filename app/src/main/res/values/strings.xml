@@ -736,4 +736,9 @@ be temporary, and you can try again later.</li>
 
     <!-- Preference for switching to a new tab immediately after opening -->
     <string name="preference_open_new_tab">When you open a link in a new tab, switch to it immediately</string>
+
+    <!-- Appears after long pressing URL input as part of the context menu -->
+    <string name="context_menu_paste_go">Paste &amp; Go</string>
+    <!-- Appears after long pressing URL input as part of the context menu -->
+    <string name="context_menu_paste_search">Paste &amp; Search</string>
 </resources>

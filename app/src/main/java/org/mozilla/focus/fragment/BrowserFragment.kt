@@ -34,8 +34,11 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
+import android.view.ContextMenu
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -50,13 +53,13 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.android.synthetic.main.browser_display_toolbar.*
+import mozilla.components.browser.domains.CustomDomains
 
 import org.mozilla.focus.R
 import org.mozilla.focus.activity.InstallFirefoxActivity
 import org.mozilla.focus.activity.MainActivity
 import org.mozilla.focus.animation.TransitionDrawableGroup
 import org.mozilla.focus.architecture.NonNullObserver
-import org.mozilla.focus.autocomplete.AutocompleteQuickAddPopup
 import org.mozilla.focus.biometrics.BiometricAuthenticationDialogFragment
 import org.mozilla.focus.biometrics.BiometricAuthenticationHandler
 import org.mozilla.focus.biometrics.Biometrics
@@ -117,7 +120,6 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     private var popupTint: FrameLayout? = null
     private var swipeRefresh: SwipeRefreshLayout? = null
     private var menuWeakReference: WeakReference<BrowserMenu>? = WeakReference<BrowserMenu>(null)
-    private var autocompletePopupWeakReference = WeakReference<AutocompleteQuickAddPopup>(null)
 
     /**
      * Container for custom video views shown in fullscreen mode.
@@ -243,6 +245,8 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         popupTint = view.findViewById(R.id.popup_tint)
 
         urlView = view.findViewById<View>(R.id.display_url) as TextView
+        registerForContextMenu(urlView)
+
         urlView!!.setOnLongClickListener(this)
 
         progressView = view.findViewById<View>(R.id.progress) as AnimatedProgressBar
@@ -1231,9 +1235,74 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         blockView!!.visibility = if (enabled) View.GONE else View.VISIBLE
     }
 
-    private fun dismissAutocompletePopup() {
-        autocompletePopupWeakReference.get()?.dismiss()
-        autocompletePopupWeakReference.clear()
+    override fun onCreateContextMenu(
+        menu: ContextMenu?,
+        v: View?,
+        menuInfo: ContextMenu.ContextMenuInfo?
+    ) {
+        when (v?.id) {
+            R.id.display_url -> {
+                menu?.add(Menu.NONE, 1, Menu.NONE, R.string.custom_autocomplete_quick_add)
+                val clipboardManager =
+                    context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                if (clipboardManager!!.hasPrimaryClip()) {
+                    val clipboardText =
+                        clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(context).toString()
+                    val isClipboardUrl = UrlUtils.isUrl(clipboardText)
+                    val itemTextRes =
+                        if (isClipboardUrl) R.string.context_menu_paste_go
+                        else R.string.context_menu_paste_search
+                    menu?.add(Menu.NONE, 2, Menu.NONE, itemTextRes)
+                }
+                menu?.add(Menu.NONE, 3, Menu.NONE, R.string.contextmenu_link_copy)
+                super.onCreateContextMenu(menu, v, menuInfo)
+            }
+            else -> println("We don't know what this is")
+        }
+    }
+
+    override fun onContextItemSelected(item: MenuItem?): Boolean {
+        val clipboardManager =
+            context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val context: Context = context!!
+        when (item?.itemId) {
+            1 -> {
+                val duplicateURL: Boolean = CustomDomains.load(context).contains(url)
+                if (!duplicateURL) {
+                    CustomDomains.add(context, url)
+                    TelemetryWrapper.saveAutocompleteDomainEvent(TelemetryWrapper.AutoCompleteEventSource.QUICK_ADD)
+                }
+                val messageId =
+                    if (!duplicateURL)
+                        R.string.preference_autocomplete_add_confirmation
+                    else
+                        R.string.preference_autocomplete_duplicate_url_error
+                ViewUtils.showBrandedSnackbar(Objects.requireNonNull<View>(view), messageId, 0)
+            }
+            2 -> {
+                if (clipboardManager != null && clipboardManager.hasPrimaryClip()) {
+                    val clipboardText =
+                        clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(context)
+                            .toString()
+                    val isClipboardUrl = UrlUtils.isUrl(clipboardText)
+                    if (!isClipboardUrl) {
+                        loadUrl(UrlUtils.createSearchUrl(context, clipboardText))
+                    } else {
+                        loadUrl(clipboardText)
+                    }
+                }
+            }
+            3 -> {
+                val uri = Uri.parse(url)
+                clipboardManager?.primaryClip = ClipData.newRawUri("Uri", uri)
+                Toast.makeText(
+                    context,
+                    getString(R.string.custom_tab_copy_url_action),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        return super.onContextItemSelected(item)
     }
 
     override fun onLongClick(view: View): Boolean {
@@ -1247,26 +1316,6 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
                 clipBoard.primaryClip = ClipData.newRawUri("Uri", uri)
                 Toast.makeText(context, getString(R.string.custom_tab_copy_url_action), Toast.LENGTH_SHORT).show()
             }
-
-            val autocompletePopup = AutocompleteQuickAddPopup(context, urlView!!.text.toString())
-
-            // Show the Snackbar and dismiss the popup when a new URL is added.
-            autocompletePopup.onUrlAdded = fun(didAddSuccessfully: Boolean?) {
-                activity!!.runOnUiThread {
-                    val messageId =
-                        if (didAddSuccessfully!!)
-                            R.string.preference_autocomplete_add_confirmation
-                        else
-                            R.string.preference_autocomplete_duplicate_url_error
-                    ViewUtils.showBrandedSnackbar(Objects.requireNonNull<View>(getView()), messageId, 0)
-                    dismissAutocompletePopup()
-                }
-
-                return Unit
-            }
-
-            autocompletePopup.show(urlView!!)
-            autocompletePopupWeakReference = WeakReference(autocompletePopup)
         }
 
         return false
