@@ -116,6 +116,8 @@ public interface IWebView {
 
     void loadUrl(String url);
 
+    void connectivityChanged(Boolean connected);
+
     void cleanup();
 
     void goForward();

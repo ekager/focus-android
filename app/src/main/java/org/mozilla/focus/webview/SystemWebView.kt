@@ -6,6 +6,7 @@ package org.mozilla.focus.webview
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -46,12 +47,19 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
     private var callback: IWebView.Callback? = null
     private val client: FocusWebViewClient = FocusWebViewClient(getContext().applicationContext)
     private val linkHandler: LinkHandler
+    private var connected: Boolean = false
+    private var pendingLoad: String? = null
+
 
     init {
 
         webViewClient = client
         webChromeClient = createWebChromeClient()
         setDownloadListener(createDownloadListener())
+
+        val mConnectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
+        connected = mConnectivityManager?.activeNetworkInfo?.isConnected ?: false
 
         if (BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(true)
@@ -61,6 +69,14 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
 
         linkHandler = LinkHandler(this)
         setOnLongClickListener(linkHandler)
+    }
+
+    override fun connectivityChanged(connected: Boolean) {
+        this.connected = connected
+        if (pendingLoad != null && connected) {
+            loadUrl(pendingLoad!!)
+            pendingLoad = null
+        }
     }
 
     @VisibleForTesting

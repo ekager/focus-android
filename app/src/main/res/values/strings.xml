@@ -745,4 +745,8 @@ be temporary, and you can try again later.</li>
 
     <!-- Preference for switching to a new tab immediately after opening -->
     <string name="preference_open_new_tab">Switch to link in new tab immediately</string>
+
+    <string name="no_internet_connection">No internet connection</string>
+    <!-- Internet Reconnect Message -->
+    <string name="reload_page_message">We will reload %1$s when your internet is connected.</string>
 </resources>

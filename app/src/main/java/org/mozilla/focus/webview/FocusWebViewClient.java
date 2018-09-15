@@ -286,7 +286,7 @@ import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES;
         // the desired page, or a page resource:
         if (error.getUrl().equals(currentPageURL)) {
             TelemetryWrapper.sslErrorEvent(true, error);
-            ErrorPage.loadErrorPage(view, error.getUrl(), WebViewClient.ERROR_FAILED_SSL_HANDSHAKE);
+            ErrorPage.loadErrorPage((IWebView) view, view.getContext(), error.getUrl(), WebViewClient.ERROR_FAILED_SSL_HANDSHAKE);
         } else {
             TelemetryWrapper.sslErrorEvent(false, error);
         }
@@ -322,7 +322,7 @@ import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES;
             } catch (final NumberFormatException e) {
                 desiredErrorCode = WebViewClient.ERROR_BAD_URL;
             }
-            ErrorPage.loadErrorPage(webView, failingUrl, desiredErrorCode);
+            ErrorPage.loadErrorPage((IWebView) webView, webView.getContext(), failingUrl, desiredErrorCode);
             return;
         }
 
@@ -331,7 +331,7 @@ import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES;
         // e.g.. "There was a network error.", whereas this version provides things like "net::ERR_NAME_NOT_RESOLVED"
         if (failingUrl.equals(currentPageURL) &&
                 ErrorPage.supportsErrorCode(errorCode)) {
-            ErrorPage.loadErrorPage(webView, currentPageURL, errorCode);
+            ErrorPage.loadErrorPage((IWebView) webView, webView.getContext(), currentPageURL, errorCode);
             return;
         }
 

@@ -8,6 +8,7 @@ package org.mozilla.focus.web
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -18,7 +19,10 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import org.json.JSONException
+import org.mozilla.focus.ConnectionLiveData
 import org.mozilla.focus.browser.LocalizedContent
 import org.mozilla.focus.gecko.GeckoViewPrompt
 import org.mozilla.focus.gecko.NestedGeckoView
@@ -29,6 +33,7 @@ import org.mozilla.focus.utils.AppConstants
 import org.mozilla.focus.utils.IntentUtils
 import org.mozilla.focus.utils.Settings
 import org.mozilla.focus.utils.UrlUtils
+import org.mozilla.focus.webview.ErrorPage
 import org.mozilla.focus.webview.SystemWebView
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
@@ -52,7 +57,7 @@ class GeckoWebViewProvider : IWebViewProvider {
         val settings = Settings.getInstance(context)
         if (!settings.shouldShowFirstrun() && settings.isFirstGeckoRun()) {
             PreferenceManager.getDefaultSharedPreferences(context)
-                    .edit().putBoolean(PREF_FIRST_GECKO_RUN, false).apply()
+                .edit().putBoolean(PREF_FIRST_GECKO_RUN, false).apply()
             Log.d(javaClass.simpleName, "Sending change to Gecko ping")
             TelemetryWrapper.changeToGeckoEngineEvent()
         }
@@ -120,10 +125,16 @@ class GeckoWebViewProvider : IWebViewProvider {
         private var isLoadingInternalUrl = false
         private lateinit var finder: SessionFinder
         private var restored = false
+        private var pendingLoad: String? = null
+        private var connected: Boolean = false
+        private var localURLs = HashMap<String, String>()
 
         init {
             PreferenceManager.getDefaultSharedPreferences(context)
                 .registerOnSharedPreferenceChangeListener(this)
+            val mConnectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            connected = mConnectivityManager.activeNetworkInfo?.isConnected ?: false
             geckoSession = createGeckoSession()
             applySettingsAndSetDelegates()
             setSession(geckoSession, geckoRuntime)
@@ -211,11 +222,17 @@ class GeckoWebViewProvider : IWebViewProvider {
         }
 
         override fun setRequestDesktop(shouldRequestDesktop: Boolean) {
-            geckoSession.settings.setBoolean(
-                GeckoSessionSettings.USE_DESKTOP_MODE,
-                shouldRequestDesktop
-            )
-            callback?.onRequestDesktopStateChanged(shouldRequestDesktop)
+            val currentMode = geckoSession.settings.getInt(GeckoSessionSettings.USER_AGENT_MODE)
+            val newMode = if (shouldRequestDesktop) {
+                GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
+            } else {
+                GeckoSessionSettings.USER_AGENT_MODE_MOBILE
+            }
+
+            if (newMode != currentMode) {
+                geckoSession.settings.setInt(GeckoSessionSettings.USER_AGENT_MODE, newMode)
+                callback?.onRequestDesktopStateChanged(shouldRequestDesktop)
+            }
         }
 
         override fun onSharedPreferenceChanged(
@@ -224,6 +241,14 @@ class GeckoWebViewProvider : IWebViewProvider {
         ) {
             updateBlocking()
             applyAppSettings()
+        }
+
+        override fun connectivityChanged(connected: Boolean) {
+            this.connected = connected
+            if (pendingLoad != null && connected) {
+                loadUrl(pendingLoad ?: return)
+                pendingLoad = null
+            }
         }
 
         private fun applyAppSettings() {
@@ -352,6 +377,7 @@ class GeckoWebViewProvider : IWebViewProvider {
                             // When the url is a localized content, then the page is secure
                             isSecure = true
                         }
+
                         callback?.onPageFinished(isSecure)
                     } else {
                         callback?.onProgress(progress)
@@ -398,6 +424,24 @@ class GeckoWebViewProvider : IWebViewProvider {
         @Suppress("ComplexMethod")
         private fun createNavigationDelegate(): GeckoSession.NavigationDelegate {
             return object : GeckoSession.NavigationDelegate {
+
+                override fun onLoadError(
+                    session: GeckoSession?,
+                    uri: String,
+                    category: Int,
+                    error: Int
+                ): GeckoResult<String> {
+                    if (!connected && !UrlUtils.isLocalizedContent(uri)) {
+                        ErrorPage.loadNotConnectedPage(
+                            this@GeckoWebView,
+                            context,
+                            uri
+                        )
+                        pendingLoad = uri
+                    }
+                    return GeckoResult.fromValue(null)
+                }
+
                 override fun onLoadRequest(
                     session: GeckoSession,
                     uri: String,
@@ -422,8 +466,13 @@ class GeckoWebViewProvider : IWebViewProvider {
                     ) {
                         response.complete(true)
                     } else if (uri == "about:neterror" || uri == "about:certerror") {
+                        ErrorPage.loadErrorPage(
+                            this@GeckoWebView,
+                            context,
+                            uri,
+                            WebViewClient.ERROR_UNKNOWN
+                        )
                         response.complete(true)
-                        TODO("Error Page handling with Components ErrorPages #2471")
                     } else {
                         callback?.onRequest(flags == GeckoSession.NavigationDelegate.LOAD_REQUEST_IS_USER_TRIGGERED)
 
@@ -443,22 +492,21 @@ class GeckoWebViewProvider : IWebViewProvider {
 
                 override fun onLocationChange(session: GeckoSession, url: String) {
                     var desiredUrl = url
+
                     // Save internal data: urls we should override to present focus:about, focus:rights
                     if (isLoadingInternalUrl) {
-                        if (currentUrl == LocalizedContent.URL_ABOUT) {
-                            internalAboutData = desiredUrl
-                        } else if (currentUrl == LocalizedContent.URL_RIGHTS) {
-                            internalRightsData = desiredUrl
+                        localURLs[desiredUrl] = when (currentUrl) {
+                            LocalizedContent.URL_ABOUT -> LocalizedContent.URL_ABOUT
+                            LocalizedContent.URL_RIGHTS -> LocalizedContent.URL_RIGHTS
+                            else -> currentUrl
                         }
                         isLoadingInternalUrl = false
                         desiredUrl = currentUrl
                     }
 
-                    // Check for internal data: urls to instead present focus:rights, focus:about
-                    if (!TextUtils.isEmpty(internalAboutData) && internalAboutData == desiredUrl) {
-                        desiredUrl = LocalizedContent.URL_ABOUT
-                    } else if (!TextUtils.isEmpty(internalRightsData) && internalRightsData == desiredUrl) {
-                        desiredUrl = LocalizedContent.URL_RIGHTS
+                    // Check for internal data: urls to instead present focus:rights, focus:about, etc
+                    if (localURLs.containsKey(desiredUrl) && localURLs[desiredUrl] != null) {
+                        desiredUrl = localURLs[desiredUrl]!!
                     }
 
                     currentUrl = desiredUrl
@@ -589,9 +637,8 @@ class GeckoWebViewProvider : IWebViewProvider {
             encoding: String,
             historyURL: String
         ) {
-            isLoadingInternalUrl = historyURL == LocalizedContent.URL_RIGHTS || historyURL ==
-                    LocalizedContent.URL_ABOUT
-            geckoSession.loadData(data.toByteArray(Charsets.UTF_8), mimeType, baseURL)
+            isLoadingInternalUrl = true
+            geckoSession.loadData(data.toByteArray(Charsets.UTF_8), mimeType)
             currentUrl = historyURL
         }
 
@@ -626,8 +673,6 @@ class GeckoWebViewProvider : IWebViewProvider {
     companion object {
         @Volatile
         private var geckoRuntime: GeckoRuntime? = null
-        private var internalAboutData: String? = null
-        private var internalRightsData: String? = null
         private const val USER_AGENT =
             "Mozilla/5.0 (Android 8.1.0; Mobile; rv:60.0) Gecko/60.0 Firefox/60.0"
         const val PREF_FIRST_GECKO_RUN: String = "first_gecko_run"

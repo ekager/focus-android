@@ -28,6 +28,7 @@ object WebViewProvider : IWebViewProvider {
             false -> ClassicWebViewProvider()
             true -> GeckoWebViewProvider()
         }
+        engine = GeckoWebViewProvider()
         return engine!!
     }
 

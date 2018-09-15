@@ -53,6 +53,7 @@ import kotlinx.android.synthetic.main.browser_display_toolbar.*
 import mozilla.components.support.utils.ColorUtils
 import mozilla.components.support.utils.DownloadUtils
 import mozilla.components.support.utils.DrawableUtils
+import org.mozilla.focus.ConnectionLiveData
 import org.mozilla.focus.R
 import org.mozilla.focus.activity.InstallFirefoxActivity
 import org.mozilla.focus.activity.MainActivity
@@ -116,6 +117,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     private var swipeRefresh: SwipeRefreshLayout? = null
     private var menuWeakReference: WeakReference<BrowserMenu>? = WeakReference<BrowserMenu>(null)
     private var autocompletePopupWeakReference = WeakReference<AutocompleteQuickAddPopup>(null)
+    private var connected: Boolean = false
 
     /**
      * Container for custom video views shown in fullscreen mode.
@@ -190,6 +192,19 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
             val menu = menuWeakReference!!.get()
 
             menu?.updateTrackers(blockedTrackers!!)
+        })
+
+        val connectionLiveData = ConnectionLiveData(requireContext())
+        connectionLiveData.observe(this, Observer {
+            when {
+                it != null -> connected = it.isConnected ?: false
+            }
+            getWebView()!!.connectivityChanged(connected)
+            if (!connected) {
+                connectivityView?.visibility = View.VISIBLE
+            } else {
+                connectivityView?.visibility = View.GONE
+            }
         })
 
         findInPageCoordinator.matches.observe(

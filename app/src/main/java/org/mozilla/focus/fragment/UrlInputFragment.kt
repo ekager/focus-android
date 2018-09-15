@@ -34,6 +34,7 @@ import mozilla.components.browser.domains.DomainAutoCompleteProvider
 import mozilla.components.support.utils.ThreadUtils
 import mozilla.components.ui.autocomplete.InlineAutocompleteEditText
 import mozilla.components.ui.autocomplete.InlineAutocompleteEditText.AutocompleteResult
+import org.mozilla.focus.ConnectionLiveData
 import org.mozilla.focus.R
 import org.mozilla.focus.R.string.pref_key_homescreen_tips
 import org.mozilla.focus.R.string.teaser
@@ -157,6 +158,19 @@ class UrlInputFragment :
         model = ViewModelProviders.of(requireActivity()).get(MainViewModel::class.java)
         searchSuggestionsViewModel = ViewModelProviders.of(this).get(SearchSuggestionsViewModel::class.java)
 
+        val connectionLiveData = ConnectionLiveData(requireContext())
+        connectionLiveData.observe(this, Observer {
+            val connected = when {
+                it != null -> it.isConnected ?: false
+                else -> false
+            }
+            if (!connected && !isOverlay) {
+                connectivityView?.visibility = View.VISIBLE
+            } else {
+                connectivityView?.visibility = View.GONE
+            }
+        })
+
         PreferenceManager.getDefaultSharedPreferences(context)
             .registerOnSharedPreferenceChangeListener(this)
 
@@ -265,6 +279,11 @@ class UrlInputFragment :
             val marginParams = searchViewContainer.layoutParams as ViewGroup.MarginLayoutParams
             marginParams.topMargin = (inputHeight + statusBarHeight).toInt()
         }
+
+        if (connectivityView.layoutParams is ViewGroup.MarginLayoutParams) {
+            val marginParams = connectivityView.layoutParams as ViewGroup.MarginLayoutParams
+            marginParams.topMargin = (inputHeight + statusBarHeight).toInt()
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?):
@@ -294,6 +313,7 @@ class UrlInputFragment :
 
         if (isOverlay) {
             keyboardLinearLayout?.visibility = View.GONE
+            connectivityView?.visibility = View.GONE
         } else {
             backgroundView?.setBackgroundResource(R.drawable.background_gradient)
 

@@ -93,4 +93,30 @@ public class HtmlLoader {
 
         return  builder.toString();
     }
+
+    public static String loadSvgAsDataURI(@NonNull final Context context,
+                                          @NonNull final int resourceID) {
+
+        final StringBuilder builder = new StringBuilder();
+        builder.append("data:image/svg+xml;base64,");
+
+        // We are copying the approach BitmapFactory.decodeResource(Resources, int, Options)
+        // uses - you are explicitly allowed to open Drawables, but the method has a @RawRes
+        // annotation (despite officially supporting Drawables).
+        //noinspection ResourceType
+        try (final InputStream pngInputStream = context.getResources().openRawResource(resourceID)) {
+            // Base64 encodes 3 bytes at a time, make sure we have a multiple of 3 here
+            // I don't know what a sensible chunk size is, let's just go with 300b.
+            final byte[] data = new byte[3 * 100];
+            int bytesRead;
+
+            while ((bytesRead = pngInputStream.read(data)) > 0) {
+                builder.append(Base64.encodeToString(data, 0, bytesRead, 0));
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load svg data");
+        }
+
+        return builder.toString();
+    }
 }

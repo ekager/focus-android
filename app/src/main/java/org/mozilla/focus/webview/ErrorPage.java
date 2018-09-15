@@ -4,15 +4,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.mozilla.focus.webview;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.support.v4.util.ArrayMap;
 import android.support.v4.util.Pair;
-import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import org.mozilla.focus.R;
 import org.mozilla.focus.utils.HtmlLoader;
+import org.mozilla.focus.web.IWebView;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -85,7 +88,7 @@ public class ErrorPage {
         return (errorDescriptionMap.get(errorCode) != null);
     }
 
-    public static void loadErrorPage(final WebView webView, final String desiredURL, final int errorCode) {
+    public static void loadErrorPage(final IWebView webView, final Context context, final String desiredURL, final int errorCode) {
         final Pair<Integer, Integer> errorResourceIDs = errorDescriptionMap.get(errorCode);
 
         if (errorResourceIDs == null) {
@@ -104,11 +107,11 @@ public class ErrorPage {
         // https://code.google.com/p/android/issues/detail?id=211768 (this breaks loading css via file:///
         // references when running debug builds, and probably klar too) - which means this wouldn't
         // be possible even if we hacked around the mixed content issues.
-        final String cssString = HtmlLoader.loadResourceFile(webView.getContext(), R.raw.errorpage_style, null);
+        final String cssString = HtmlLoader.loadResourceFile(context, R.raw.errorpage_style, null);
 
         final Map<String, String> substitutionMap = new ArrayMap<>();
 
-        final Resources resources = webView.getContext().getResources();
+        final Resources resources = context.getResources();
 
         substitutionMap.put("%page-title%", resources.getString(R.string.errorpage_title));
         substitutionMap.put("%button%", resources.getString(R.string.errorpage_refresh));
@@ -118,11 +121,40 @@ public class ErrorPage {
 
         substitutionMap.put("%css%", cssString);
 
-        final String errorPage = HtmlLoader.loadResourceFile(webView.getContext(), R.raw.errorpage, substitutionMap);
+        final String errorPage = HtmlLoader.loadResourceFile(context, R.raw.errorpage, substitutionMap);
 
         // We could load the raw html file directly into the webview using a file:///android_res/
         // URI - however we'd then need to do some JS hacking to do our String substitutions. Moreover
         // we'd have to deal with the mixed-content issues detailed above in that case.
-        webView.loadDataWithBaseURL(desiredURL, errorPage, "text/html", "UTF8", desiredURL);
+        webView.loadData(desiredURL, errorPage, "text/html", "UTF8", desiredURL);
+    }
+
+    public static void loadNotConnectedPage(final IWebView webView, final Context context, final String desiredURL) {
+        final Map<String, String> substitutionMap = new ArrayMap<>();
+
+        final Resources resources = context.getResources();
+
+        substitutionMap.put("%image%", HtmlLoader.loadSvgAsDataURI(context, R.raw.error_connection_failure));
+
+        substitutionMap.put("%page-title%", resources.getString(R.string.errorpage_title));
+
+        substitutionMap.put("%messageShort%", resources.getString(R.string.no_internet_connection));
+
+        String host = null;
+        try {
+            final URI uri = new URI(desiredURL);
+            host = uri.getHost();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+        substitutionMap.put("%messageLong%", resources.getString(R.string.reload_page_message, host != null ? host : desiredURL));
+
+        final String errorPage = HtmlLoader.loadResourceFile(context, R.raw.connect_error_page, substitutionMap);
+
+        // We could load the raw html file directly into the webview using a file:///android_res/
+        // URI - however we'd then need to do some JS hacking to do our String substitutions. Moreover
+        // we'd have to deal with the mixed-content issues detailed above in that case.
+        webView.loadData(desiredURL, errorPage, "text/html", "UTF8", desiredURL);
     }
 }
