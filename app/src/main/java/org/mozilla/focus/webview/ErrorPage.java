@@ -8,12 +8,17 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.support.v4.util.ArrayMap;
 import android.support.v4.util.Pair;
+import android.util.Log;
 import android.webkit.WebViewClient;
 
 import org.mozilla.focus.R;
 import org.mozilla.focus.utils.HtmlLoader;
 import org.mozilla.focus.web.IWebView;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -129,7 +134,7 @@ public class ErrorPage {
         webView.loadData(desiredURL, errorPage, "text/html", "UTF8", desiredURL);
     }
 
-    public static void loadNotConnectedPage(final IWebView webView, final Context context, final String desiredURL) {
+    public static String loadNotConnectedPage(final Context context, final String desiredURL) {
         final Map<String, String> substitutionMap = new ArrayMap<>();
 
         final Resources resources = context.getResources();
@@ -150,11 +155,60 @@ public class ErrorPage {
 
         substitutionMap.put("%messageLong%", resources.getString(R.string.reload_page_message, host != null ? host : desiredURL));
 
-        final String errorPage = HtmlLoader.loadResourceFile(context, R.raw.connect_error_page, substitutionMap);
+        Log.v("Tag", HtmlLoader.loadResourceFile(context, R.raw.connect_error_page, substitutionMap));
 
-        // We could load the raw html file directly into the webview using a file:///android_res/
-        // URI - however we'd then need to do some JS hacking to do our String substitutions. Moreover
-        // we'd have to deal with the mixed-content issues detailed above in that case.
-        webView.loadData(desiredURL, errorPage, "text/html", "UTF8", desiredURL);
+        return HtmlLoader.loadResourceFile(context, R.raw.connect_error_page, substitutionMap);
+    }
+
+    public static String createErrorPage(final Context context, final String error, final String desiredURL) {
+        String mErrorTemplate;
+            InputStream stream = null;
+            BufferedReader reader = null;
+            StringBuilder builder = new StringBuilder();
+            try {
+                stream = context.getResources().getAssets().open("connect_error_page.html");
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    builder.append(line);
+                    builder.append("\n");
+                }
+
+                mErrorTemplate = builder.toString();
+            } catch (IOException e) {
+                Log.d("Tag", "Failed to open error page template", e);
+                return null;
+            } finally {
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (IOException e) {
+                        Log.e("Tag", "Failed to close error page template stream", e);
+                    }
+                }
+
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        Log.e("Tag", "Failed to close error page template reader", e);
+                    }
+                }
+            }
+
+        String host = null;
+        try {
+            final URI uri = new URI(desiredURL);
+            host = uri.getHost();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+        Log.v("Tag", mErrorTemplate);
+        return mErrorTemplate.replace("%image%", HtmlLoader.loadSvgAsDataURI(context, R.raw.error_connection_failure))
+                .replace("%page-title%", context.getResources().getString(R.string.errorpage_title))
+                .replace("%messageShort%", context.getResources().getString(R.string.no_internet_connection))
+                .replace("%messageLong%", context.getResources().getString(R.string.reload_page_message, host != null ? host : desiredURL));
     }
 }

@@ -14,15 +14,12 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Parcelable
 import android.preference.PreferenceManager
-import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import android.webkit.WebSettings
-import android.webkit.WebView
 import android.webkit.WebViewClient
 import org.json.JSONException
-import org.mozilla.focus.ConnectionLiveData
 import org.mozilla.focus.browser.LocalizedContent
 import org.mozilla.focus.gecko.GeckoViewPrompt
 import org.mozilla.focus.gecko.NestedGeckoView
@@ -245,9 +242,8 @@ class GeckoWebViewProvider : IWebViewProvider {
 
         override fun connectivityChanged(connected: Boolean) {
             this.connected = connected
-            if (pendingLoad != null && connected) {
-                // We should be able to reload the page instead if we get loadData to take a historyUrl
-                loadUrl(pendingLoad ?: return)
+            if (pendingLoad != null && connected && pendingLoad == url) {
+                reload()
                 pendingLoad = null
             }
         }
@@ -425,22 +421,19 @@ class GeckoWebViewProvider : IWebViewProvider {
         @Suppress("ComplexMethod")
         private fun createNavigationDelegate(): GeckoSession.NavigationDelegate {
             return object : GeckoSession.NavigationDelegate {
-
                 override fun onLoadError(
                     session: GeckoSession?,
                     uri: String,
                     category: Int,
                     error: Int
                 ): GeckoResult<String> {
-                    if (!connected && !UrlUtils.isLocalizedContent(uri)) {
-                        ErrorPage.loadNotConnectedPage(
-                            this@GeckoWebView,
-                            context,
-                            uri
-                        )
+                    return if (!connected && !UrlUtils.isLocalizedContent(uri)) {
                         pendingLoad = uri
+                        Log.v("Tag", "onLoadError")
+                        GeckoResult.fromValue("data:text/html," + ErrorPage.createErrorPage(context, null, uri))
+                    } else {
+                        GeckoResult.fromValue(null)
                     }
-                    return GeckoResult.fromValue(null)
                 }
 
                 override fun onLoadRequest(
@@ -638,7 +631,7 @@ class GeckoWebViewProvider : IWebViewProvider {
             encoding: String,
             historyURL: String
         ) {
-            isLoadingInternalUrl = true
+            isLoadingInternalUrl = historyURL == LocalizedContent.URL_ABOUT || historyURL == LocalizedContent.URL_RIGHTS
             geckoSession.loadData(data.toByteArray(Charsets.UTF_8), mimeType)
             currentUrl = historyURL
         }
