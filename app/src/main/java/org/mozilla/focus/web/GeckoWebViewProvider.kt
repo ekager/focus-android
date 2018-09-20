@@ -246,6 +246,7 @@ class GeckoWebViewProvider : IWebViewProvider {
         override fun connectivityChanged(connected: Boolean) {
             this.connected = connected
             if (pendingLoad != null && connected) {
+                // We should be able to reload the page instead if we get loadData to take a historyUrl
                 loadUrl(pendingLoad ?: return)
                 pendingLoad = null
             }
