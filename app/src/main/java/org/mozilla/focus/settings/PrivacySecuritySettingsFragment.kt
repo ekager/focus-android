@@ -7,6 +7,7 @@ package org.mozilla.focus.settings
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.support.v7.preference.Preference
 import android.support.v7.preference.SwitchPreferenceCompat
 import org.mozilla.focus.R
 import org.mozilla.focus.biometrics.Biometrics
@@ -51,6 +52,18 @@ class PrivacySecuritySettingsFragment : BaseSettingsFragment(),
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String) {
         TelemetryWrapper.settingsEvent(key, sharedPreferences.all[key].toString())
         updateStealthToggleAvailability()
+    }
+
+    override fun onPreferenceTreeClick(preference: Preference?): Boolean {
+        val resources = resources
+
+        when {
+            preference?.key == resources.getString(R.string.pref_key_cookies_screen) -> navigateToFragment(
+                CookieSettingsFragment()
+            )
+        }
+
+        return super.onPreferenceTreeClick(preference)
     }
 
     private fun updateStealthToggleAvailability() {
