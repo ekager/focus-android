@@ -1296,6 +1296,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
             if (loading) {
                 backgroundTransitionGroup!!.resetTransition()
 
+                securityView!!.setImageResource(R.drawable.ic_internet)
                 progressView!!.progress = INITIAL_PROGRESS
                 progressView!!.visibility = View.VISIBLE
             } else {
@@ -1306,6 +1307,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
                     progressView!!.visibility = View.GONE
                 }
                 swipeRefresh!!.isRefreshing = false
+                onSecurityChanged(session, session.securityInfo)
             }
 
             updateBlockingBadging(loading || session.trackerBlockingEnabled)
@@ -1335,20 +1337,16 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         }
 
         override fun onSecurityChanged(session: Session, securityInfo: Session.SecurityInfo) {
-            if (!session.loading) {
-                if (securityInfo.secure) {
-                    securityView!!.setImageResource(R.drawable.ic_lock)
-                } else {
-                    if (URLUtil.isHttpUrl(url)) {
-                        // HTTP site
-                        securityView!!.setImageResource(R.drawable.ic_internet)
-                    } else {
-                        // Certificate is bad
-                        securityView!!.setImageResource(R.drawable.ic_warning)
-                    }
-                }
+            if (securityInfo.secure) {
+                securityView!!.setImageResource(R.drawable.ic_lock)
             } else {
-                securityView!!.setImageResource(R.drawable.ic_internet)
+                if (URLUtil.isHttpUrl(url)) {
+                    // HTTP site
+                    securityView!!.setImageResource(R.drawable.ic_internet)
+                } else {
+                    // Certificate is bad
+                    securityView!!.setImageResource(R.drawable.ic_warning)
+                }
             }
         }
     }

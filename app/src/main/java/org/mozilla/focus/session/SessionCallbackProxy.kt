@@ -30,11 +30,7 @@ class SessionCallbackProxy(private val session: Session, private val delegate: I
 
     override fun onPageFinished(isSecure: Boolean) {
         session.loading = false
-        session.securityInfo = Session.SecurityInfo(
-                isSecure,
-                session.securityInfo.host,
-                session.securityInfo.issuer
-        )
+        session.securityInfo = session.securityInfo.copy(isSecure)
     }
 
     override fun onSecurityChanged(isSecure: Boolean, host: String?, organization: String?) {
