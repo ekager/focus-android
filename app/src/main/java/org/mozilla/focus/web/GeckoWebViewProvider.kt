@@ -8,6 +8,7 @@ package org.mozilla.focus.web
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -128,11 +129,16 @@ class GeckoWebViewProvider : IWebViewProvider {
         private var isLoadingInternalUrl = false
         private lateinit var finder: SessionFinder
         private var restored = false
+        private var pendingLoad: String? = null
+        private var connected: Boolean = false
 
         init {
             PreferenceManager.getDefaultSharedPreferences(context)
                 .registerOnSharedPreferenceChangeListener(this)
             geckoSession = createGeckoSession()
+            val mConnectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            connected = mConnectivityManager.activeNetworkInfo?.isConnected ?: false
             applySettingsAndSetDelegates()
             setSession(geckoSession, geckoRuntime)
         }
@@ -161,6 +167,14 @@ class GeckoWebViewProvider : IWebViewProvider {
 
         override fun setCallback(callback: IWebView.Callback?) {
             this.callback = callback
+        }
+
+        override fun connectivityChanged(connected: Boolean) {
+            this.connected = connected
+            if (pendingLoad != null && connected && pendingLoad == url) {
+                reload()
+                pendingLoad = null
+            }
         }
 
         override fun onPause() {
@@ -445,6 +459,10 @@ class GeckoWebViewProvider : IWebViewProvider {
                     category: Int,
                     error: Int
                 ): GeckoResult<String> {
+                    if (!connected) {
+                        // We can assume this is an error due to no connectivity and save the URL
+                        pendingLoad = uri
+                    }
                     ErrorPages.createErrorPage(
                         context,
                         geckoErrorToErrorType(error)

@@ -36,6 +36,7 @@ import mozilla.components.ui.autocomplete.InlineAutocompleteEditText.Autocomplet
 import org.mozilla.focus.R
 import org.mozilla.focus.R.string.pref_key_homescreen_tips
 import org.mozilla.focus.R.string.teaser
+import org.mozilla.focus.connectivity.ConnectionLiveData
 import org.mozilla.focus.ext.isSearch
 import org.mozilla.focus.ext.requireComponents
 import org.mozilla.focus.locale.LocaleAwareAppCompatActivity
@@ -155,6 +156,19 @@ class UrlInputFragment :
         model = ViewModelProviders.of(requireActivity()).get(MainViewModel::class.java)
         searchSuggestionsViewModel = ViewModelProviders.of(this).get(SearchSuggestionsViewModel::class.java)
 
+        val connectionLiveData = ConnectionLiveData(requireContext())
+        connectionLiveData.observe(this, Observer {
+            val connected = when {
+                it != null -> it.isConnected ?: false
+                else -> false
+            }
+            if (!connected && !isOverlay) {
+                connectivityView?.visibility = View.VISIBLE
+            } else {
+                connectivityView?.visibility = View.GONE
+            }
+        })
+
         PreferenceManager.getDefaultSharedPreferences(context)
             .registerOnSharedPreferenceChangeListener(this)
 
@@ -267,6 +281,11 @@ class UrlInputFragment :
             val marginParams = addToAutoComplete.layoutParams as ViewGroup.MarginLayoutParams
             marginParams.topMargin = (inputHeight + statusBarHeight).toInt()
         }
+
+        if (connectivityView.layoutParams is ViewGroup.MarginLayoutParams) {
+            val marginParams = connectivityView.layoutParams as ViewGroup.MarginLayoutParams
+            marginParams.topMargin = (inputHeight + statusBarHeight).toInt()
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?):
@@ -288,6 +307,7 @@ class UrlInputFragment :
 
         if (isOverlay) {
             keyboardLinearLayout?.visibility = View.GONE
+            connectivityView?.visibility = View.GONE
         } else {
             backgroundView?.setBackgroundResource(R.drawable.background_gradient)
 

@@ -37,4 +37,21 @@
             tools:progress="50" />
     </FrameLayout>
 
+    <LinearLayout
+        android:id="@+id/connectivityView"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@color/searchHintBackgroundColor"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:visibility="gone">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="@string/no_internet_connection"
+            android:textColor="@color/searchHintTextColor"
+            android:textSize="14sp" />
+    </LinearLayout>
+
 </org.mozilla.focus.browser.DisplayToolbar>

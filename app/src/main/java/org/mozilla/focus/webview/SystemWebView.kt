@@ -6,6 +6,7 @@ package org.mozilla.focus.webview
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -47,6 +48,8 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
     private var callback: IWebView.Callback? = null
     private val client: FocusWebViewClient = FocusWebViewClient(getContext().applicationContext)
     private val linkHandler: LinkHandler
+    private var connected: Boolean = false
+    private var pendingLoad: String? = null
 
     init {
 
@@ -57,6 +60,10 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
         if (BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(true)
         }
+
+        val mConnectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
+        connected = mConnectivityManager?.activeNetworkInfo?.isConnected ?: false
 
         isLongClickable = true
 
@@ -76,6 +83,16 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             TelemetryAutofillCallback.register(context)
+        }
+    }
+
+    override fun connectivityChanged(connected: Boolean) {
+        this.connected = connected
+        if (pendingLoad != null && connected && pendingLoad == url) {
+            reload()
+            pendingLoad = null
+        } else if (!connected) {
+            pendingLoad = url
         }
     }
 

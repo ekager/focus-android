@@ -767,4 +767,8 @@ be temporary, and you can try again later.</li>
 
     <!-- Preference for safe browsing which when enabled, blocks dangerous or deceptive webpages that may include phishing or malware -->
     <string name="preference_safe_browsing">Check webpages for phishing, unwanted software and malware.</string>
+
+    <string name="no_internet_connection">No internet connection</string>
+    <!-- Internet Reconnect Message -->
+    <string name="reload_page_message">We will reload %1$s when your internet is connected.</string>
 </resources>

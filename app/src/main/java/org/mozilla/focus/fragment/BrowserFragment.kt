@@ -63,6 +63,7 @@ import org.mozilla.focus.biometrics.BiometricAuthenticationDialogFragment
 import org.mozilla.focus.biometrics.BiometricAuthenticationHandler
 import org.mozilla.focus.biometrics.Biometrics
 import org.mozilla.focus.broadcastreceiver.DownloadBroadcastReceiver
+import org.mozilla.focus.connectivity.ConnectionLiveData
 import org.mozilla.focus.ext.requireComponents
 import org.mozilla.focus.ext.shouldRequestDesktopSite
 import org.mozilla.focus.findinpage.FindInPageCoordinator
@@ -146,6 +147,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     private val findInPageCoordinator = FindInPageCoordinator()
 
     private var biometricController: BiometricAuthenticationHandler? = null
+    private var connected: Boolean = true
 
     // The url property is used for things like sharing the current URL. We could try to use the webview,
     // but sometimes it's null, and sometimes it returns a null URL. Sometimes it returns a data:
@@ -167,6 +169,19 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         val sessionUUID = arguments!!.getString(ARGUMENT_SESSION_UUID) ?: throw IllegalAccessError("No session exists")
 
         session = requireComponents.sessionManager.findSessionById(sessionUUID) ?: Session("about:blank")
+
+        val connectionLiveData = ConnectionLiveData(requireContext())
+        connectionLiveData.observe(this, Observer {
+            when {
+                it != null -> connected = it.isConnected ?: false
+            }
+            getWebView()!!.connectivityChanged(connected)
+            if (!connected) {
+                connectivityView?.visibility = View.VISIBLE
+            } else {
+                connectivityView?.visibility = View.GONE
+            }
+        })
 
         findInPageCoordinator.matches.observe(
             this,
