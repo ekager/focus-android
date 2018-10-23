@@ -21,14 +21,15 @@ class ConnectionLiveData(private val context: Context) : LiveData<ConnectionMode
     companion object {
         private const val TAG = "ConnectionLiveData"
         // Based on requiring ConnectivityManager#registerDefaultNetworkCallback - added in API 24.
-        private fun isNetworkCallbackSupported(): Boolean = Build.VERSION.SDK_INT >= 24
+        private fun isNetworkCallbackSupported(): Boolean =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
     }
 
     private val connectivityManager: ConnectivityManager by lazy {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
 
-    @RequiresApi(24)
+    @RequiresApi(Build.VERSION_CODES.N)
     private var mNetworkCallback: NetworkStateCallback? = null
     private var networkReceiver: BroadcastReceiver? = null
 
@@ -52,7 +53,7 @@ class ConnectionLiveData(private val context: Context) : LiveData<ConnectionMode
         postValue(ConnectionModel(connectivityManager.activeNetworkInfo?.isConnected))
     }
 
-    @RequiresApi(24)
+    @RequiresApi(Build.VERSION_CODES.N)
     private inner class NetworkStateCallback : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
             // The Network parameter is unreliable when a VPN app is running - use active network.
