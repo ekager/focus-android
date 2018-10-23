@@ -49,7 +49,6 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
     private val client: FocusWebViewClient = FocusWebViewClient(getContext().applicationContext)
     private val linkHandler: LinkHandler
     private var connected: Boolean = false
-    private var pendingLoad: String? = null
 
     init {
 
@@ -88,11 +87,8 @@ class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(conte
 
     override fun connectivityChanged(connected: Boolean) {
         this.connected = connected
-        if (pendingLoad != null && connected && pendingLoad == url) {
+        if (client.pendingLoad != null && connected && client.pendingLoad == url) {
             reload()
-            pendingLoad = null
-        } else if (!connected) {
-            pendingLoad = url
         }
     }
 

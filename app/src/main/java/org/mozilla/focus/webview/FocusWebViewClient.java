@@ -6,6 +6,7 @@ package org.mozilla.focus.webview;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.net.http.SslCertificate;
 import android.net.http.SslError;
@@ -42,6 +43,7 @@ import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES;
     private SslCertificate restoredCertificate;
     private boolean errorReceived;
     private boolean shouldReadURL = true; // Flag to ensure URL is only read once per load
+    private String pendingLoad = null;
 
     /* package */ FocusWebViewClient(Context context) {
         super(context);
@@ -305,6 +307,10 @@ import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES;
     @Override
     public void onReceivedError(final WebView webView, int errorCode, final String description, String failingUrl) {
         errorReceived = true;
+        ConnectivityManager mConnectivityManager = (ConnectivityManager) webView.getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if ((mConnectivityManager != null && mConnectivityManager.getActiveNetworkInfo() != null && !mConnectivityManager.getActiveNetworkInfo().isConnected()) || (mConnectivityManager != null && mConnectivityManager.getActiveNetworkInfo() == null)) {
+            pendingLoad = webView.getUrl();
+        }
 
         // This is a hack: onReceivedError(WebView, WebResourceRequest, WebResourceError) is API 23+ only,
         // - the WebResourceRequest would let us know if the error affects the main frame or not. As a workaround
@@ -346,5 +352,9 @@ import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES;
         }
 
         super.onReceivedError(webView, errorCode, description, failingUrl);
+    }
+
+    public String getPendingLoad() {
+        return pendingLoad;
     }
 }
