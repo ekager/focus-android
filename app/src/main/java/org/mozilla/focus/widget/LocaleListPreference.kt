@@ -20,7 +20,8 @@ import org.mozilla.focus.locale.LocaleManager
 import org.mozilla.focus.locale.Locales
 import java.nio.ByteBuffer
 import java.text.Collator
-import java.util.*
+import java.util.Arrays
+import java.util.Locale
 
 class LocaleListPreference(context: Context?, attrs: AttributeSet?) : ListPreference(
     context,
@@ -81,6 +82,7 @@ class LocaleListPreference(context: Context?, attrs: AttributeSet?) : ListPrefer
             for (tag in LocaleManager.getPackagedLocaleTags(context)) {
                 val descriptor = LocaleDescriptor(tag)
                 if (!descriptor.isUsable(characterValidator)) {
+                    Log.v(LOG_TAG, "Skipping locale $descriptor")
                 } else {
                     locales.add(descriptor)
                 }
@@ -114,7 +116,6 @@ class LocaleListPreference(context: Context?, attrs: AttributeSet?) : ListPrefer
 
         return Pair(entries, values)
     }
-
 
     private fun getEntriesAsync(
         i: Int,
@@ -216,7 +217,6 @@ class LocaleListPreference(context: Context?, attrs: AttributeSet?) : ListPrefer
                     1
                 )
             )
-
         }
 
         companion object {
@@ -261,7 +261,9 @@ class LocaleListPreference(context: Context?, attrs: AttributeSet?) : ListPrefer
      * and a whitespace character; this class performs the graphical comparison.
      *
      * Note: this constructor fails when running in Robolectric: robolectric only supports bitmaps
-     * with 4 bytes per pixel ( https://github.com/robolectric/robolectric/blob/master/robolectric-shadows/shadows-core/src/main/java/org/robolectric/shadows/ShadowBitmap.java#L540 ).
+     * with 4 bytes per pixel
+     * https://github.com/robolectric/robolectric/blob/master/robolectric-shadows/shadows-core/
+     * src/main/java/org/robolectric/shadows/ShadowBitmap.java#L540
      * We need to either make this code test-aware, or fix robolectric.
      *
      *
@@ -296,18 +298,7 @@ class LocaleListPreference(context: Context?, attrs: AttributeSet?) : ListPrefer
                 val byteCount = b.allocationByteCount
 
                 val buffer = ByteBuffer.allocate(byteCount)
-                try {
-                    b.copyPixelsToBuffer(buffer)
-                } catch (e: RuntimeException) {
-                    // Android throws this if there's not enough space in the buffer.
-                    // This should never occur, but if it does, we don't
-                    // really care -- we probably don't need the entire image.
-                    // This is awful. I apologize.
-                    if ("Buffer not large enough for pixels" == e.message) {
-                        return buffer.array()
-                    }
-                    throw e
-                }
+                b.copyPixelsToBuffer(buffer)
 
                 return buffer.array()
             }
