@@ -16,6 +16,12 @@ import org.mozilla.focus.utils.AppConstants
 
 @Suppress("TooManyFunctions")
 class SessionCallbackProxy(private val session: Session, private val delegate: IWebView.Callback) : IWebView.Callback {
+    override fun requestPermissions(
+        permissions: Array<String>,
+        androidPermissionRequestCode: Int
+    ) {
+        delegate.requestPermissions(permissions, androidPermissionRequestCode)
+    }
 
     var isDownload = false
 

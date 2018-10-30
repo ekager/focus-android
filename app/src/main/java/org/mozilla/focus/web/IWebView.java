@@ -38,6 +38,8 @@ public interface IWebView {
     interface Callback {
         void onPageStarted(String url);
 
+        void requestPermissions(String[] permissions, int androidPermissionRequestCode);
+
         void onPageFinished(boolean isSecure);
 
         void onSecurityChanged(boolean isSecure, String host, String organization);
@@ -141,6 +143,8 @@ public interface IWebView {
     void setFindListener(IFindListener findListener);
 
     void loadData(String baseURL, String data, String mimeType, String encoding, String historyURL);
+
+    void onPermissionGranted(int requestCode, int[] grantResults);
 
     /**
      * Get the title of the currently displayed website.

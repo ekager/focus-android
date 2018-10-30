@@ -818,4 +818,15 @@ be temporary, and you can try again later.</li>
 
     <!-- Label for the checkbox to send the tab crash report to Mozilla -->
     <string name="crash_report_send_crash_label">Send crash report to Mozilla</string>
+
+    <string name="request_geolocation">Share location with "%1$s"?</string>
+    <string name="request_notification">Allow notifications for "%1$s"?</string>
+    <string name="request_autoplay">Allow autoplay media from "%1$s"?</string>
+    <string name="request_video">Share video with "%1$s"</string>
+    <string name="request_audio">Share audio with "%1$s"</string>
+    <string name="request_media">Share video and audio with "%1$s"</string>
+    <string name="media_back_camera">Back camera</string>
+    <string name="media_front_camera">Front camera</string>
+    <string name="media_microphone">Microphone</string>
+    <string name="media_other">Unknown source</string>
 </resources>

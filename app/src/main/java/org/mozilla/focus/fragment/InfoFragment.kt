@@ -49,6 +49,12 @@ class InfoFragment : WebFragment() {
     @Suppress("ComplexMethod")
     override fun createCallback(): IWebView.Callback {
         return object : IWebView.Callback {
+            override fun requestPermissions(
+                permissions: Array<out String>?,
+                androidPermissionRequestCode: Int
+            ) {
+            }
+
             override fun onPageStarted(url: String) {
                 progressView?.announceForAccessibility(getString(R.string.accessibility_announcement_loading))
                 progressView?.visibility = View.VISIBLE

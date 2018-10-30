@@ -8,6 +8,7 @@ package org.mozilla.focus.web
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -44,8 +45,12 @@ import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSession.NavigationDelegate
+import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_AUTOPLAY_MEDIA
+import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION
+import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.SessionFinder
+import java.util.*
 
 /**
  * WebViewProvider implementation for creating a Gecko based implementation of IWebView.
@@ -146,6 +151,9 @@ class GeckoWebViewProvider : IWebViewProvider {
             geckoSession.navigationDelegate = createNavigationDelegate()
             geckoSession.trackingProtectionDelegate = createTrackingProtectionDelegate()
             geckoSession.promptDelegate = createPromptDelegate()
+            val permissionDelegate = GeckoPermissionDelegate()
+            permissionDelegate.androidPermissionRequestCode = PERMISSION_CODE
+            geckoSession.permissionDelegate = permissionDelegate
             finder = geckoSession.finder
             finder.displayFlags = GeckoSession.FINDER_DISPLAY_HIGHLIGHT_ALL
         }
@@ -202,6 +210,18 @@ class GeckoWebViewProvider : IWebViewProvider {
         override fun cleanup() {
             if (geckoSession.isOpen) {
                 geckoSession.close()
+            }
+        }
+
+        override fun onPermissionGranted(
+            requestCode: Int,
+            grantResults: IntArray
+        ) {
+            Log.v("Permission", "Permission Granted!")
+            if (!grantResults.isEmpty()) {
+                (geckoSession.permissionDelegate as GeckoPermissionDelegate).onRequestPermissionsResult(
+                    grantResults = grantResults
+                )
             }
         }
 
@@ -536,6 +556,126 @@ class GeckoWebViewProvider : IWebViewProvider {
             }
         }
 
+        inner class GeckoPermissionDelegate : GeckoSession.PermissionDelegate {
+            var androidPermissionRequestCode = PERMISSION_CODE
+            private var mCallback: GeckoSession.PermissionDelegate.Callback? = null
+
+            fun onRequestPermissionsResult(
+                grantResults: IntArray
+            ) {
+                if (mCallback == null) {
+                    Log.v(
+                        "Permissions",
+                        "Callback null in onrequestpermissions"
+                    )
+                    return
+                }
+                val cb = mCallback
+                mCallback = null
+                for (result in grantResults) {
+                    if (result != PackageManager.PERMISSION_GRANTED) {
+                        // At least one permission was not granted.
+                        cb?.reject()
+                        return
+                    }
+                }
+                cb?.grant()
+            }
+
+            override fun onContentPermissionRequest(
+                session: GeckoSession?,
+                uri: String?,
+                type: Int,
+                access: String?,
+                callback: GeckoSession.PermissionDelegate.Callback
+            ) {
+                val resId = when {
+                    PERMISSION_GEOLOCATION == type -> R.string.request_geolocation
+                    PERMISSION_DESKTOP_NOTIFICATION == type -> R.string.request_notification
+                    PERMISSION_AUTOPLAY_MEDIA == type -> R.string.request_autoplay
+                    else -> {
+                        callback.reject()
+                        return
+                    }
+                }
+
+                val title = context.getString(resId, Uri.parse(uri).authority)
+                val prompt = geckoSession.promptDelegate as GeckoViewPrompt
+                prompt.promptForPermission(session, title, callback)
+            }
+
+            private fun normalizeMediaName(sources: Array<GeckoSession.PermissionDelegate.MediaSource>?): Array<String>? {
+                if (sources == null) return null
+                return Array(sources.size) { it ->
+                    getRes(it, sources)
+                }
+            }
+
+            private fun getRes(
+                it: Int,
+                sources: Array<GeckoSession.PermissionDelegate.MediaSource>
+            ): String {
+                val mediaSource = sources[it].source
+                val name = sources[it].name
+                return if (GeckoSession.PermissionDelegate.MediaSource.SOURCE_CAMERA == mediaSource) {
+                    if (name.toLowerCase(Locale.ENGLISH).contains("front")) {
+                        context.getString(R.string.media_front_camera)
+                    } else {
+                        context.getString(R.string.media_back_camera)
+                    }
+                } else if (!name.isEmpty()) {
+                    name
+                } else if (GeckoSession.PermissionDelegate.MediaSource.SOURCE_MICROPHONE == mediaSource) {
+                    context.getString(R.string.media_microphone)
+                } else {
+                    context.getString(R.string.media_other)
+                }
+            }
+
+            override fun onAndroidPermissionsRequest(
+                session: GeckoSession?,
+                permissions: Array<String>,
+                callback: GeckoSession.PermissionDelegate.Callback
+            ) {
+                Log.v("Permissions", "Android permissions request ${permissions[0]}")
+                mCallback = callback
+                this@GeckoWebView.callback?.requestPermissions(
+                    permissions,
+                    androidPermissionRequestCode
+                )
+            }
+
+            override fun onMediaPermissionRequest(
+                session: GeckoSession?,
+                uri: String?,
+                video: Array<GeckoSession.PermissionDelegate.MediaSource>?,
+                audio: Array<GeckoSession.PermissionDelegate.MediaSource>?,
+                callback: GeckoSession.PermissionDelegate.MediaCallback
+            ) {
+                val host = Uri.parse(uri).authority
+                val title: String
+                title = when {
+                    audio == null -> context.getString(R.string.request_video, host)
+                    video == null -> context.getString(R.string.request_audio, host)
+                    else -> context.getString(R.string.request_media, host)
+                }
+
+                val videoNames = normalizeMediaName(video)
+                val audioNames = normalizeMediaName(audio)
+
+                val prompt = geckoSession.promptDelegate as GeckoViewPrompt
+                prompt.onMediaPrompt(
+                    session,
+                    title,
+                    video,
+                    audio,
+                    videoNames,
+                    audioNames,
+                    callback
+                )
+            }
+        }
+
         private fun createPromptDelegate(): GeckoSession.PromptDelegate {
             return GeckoViewPrompt(context as Activity)
         }
@@ -697,6 +837,7 @@ class GeckoWebViewProvider : IWebViewProvider {
         const val WEBVIEW_TITLE = "webViewTitle"
         const val CURRENT_URL = "currentUrl"
         const val ABOUT_BLANK = "about:blank"
+        const val PERMISSION_CODE = 400
 
         /**
          * Provides an ErrorType corresponding to the error code provided.

@@ -98,7 +98,7 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
             final int padding = getViewPadding(builder);
             parent = new FrameLayout(builder.getContext());
             parent.setPadding(/* left */ padding, /* top */ 0,
-                              /* right */ padding, /* bottom */ 0);
+                    /* right */ padding, /* bottom */ 0);
             builder.setView(parent);
         }
         parent.addView(checkbox);
@@ -123,8 +123,8 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
 
     @Override
     public void onButtonPrompt(final GeckoSession session, final String title,
-                                final String msg, final String[] btnMsg,
-                                final ButtonCallback callback) {
+                               final String msg, final String[] btnMsg,
+                               final ButtonCallback callback) {
         final Activity activity = mActivity;
         if (activity == null || activity.isFinishing()) {
             callback.dismiss();
@@ -177,7 +177,7 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
         final int verticalPadding = (msg == null || msg.isEmpty()) ? horizontalPadding : 0;
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(/* left */ horizontalPadding, /* top */ verticalPadding,
-                             /* right */ horizontalPadding, /* bottom */ verticalPadding);
+                /* right */ horizontalPadding, /* bottom */ verticalPadding);
         scrollView.addView(container);
         builder.setTitle(title)
                 .setMessage(msg)
@@ -199,8 +199,8 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
 
     @Override
     public void onTextPrompt(final GeckoSession session, final String title,
-                              final String msg, final String value,
-                              final TextCallback callback) {
+                             final String msg, final String value,
+                             final TextCallback callback) {
         final Activity activity = mActivity;
         if (activity == null || activity.isFinishing()) {
             callback.dismiss();
@@ -308,8 +308,8 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
 
     @Override
     public void onChoicePrompt(final GeckoSession session, final String title,
-                                final String msg, final int type,
-                                final Choice[] choices, final ChoiceCallback callback) {
+                               final String msg, final int type,
+                               final Choice[] choices, final ChoiceCallback callback) {
         final Activity activity = mActivity;
         if (activity == null || activity.isFinishing()) {
             callback.dismiss();
@@ -490,7 +490,7 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
 
     @Override
     public void onColorPrompt(final GeckoSession session, final String title,
-                               final String value, final TextCallback callback) {
+                              final String value, final TextCallback callback) {
         final Activity activity = mActivity;
         if (activity == null || activity.isFinishing()) {
             callback.dismiss();
@@ -598,8 +598,8 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
 
     @Override
     public void onDateTimePrompt(final GeckoSession session, final String title,
-                                  final int type, final String value, final String min,
-                                  final String max, final TextCallback callback) {
+                                 final int type, final String value, final String min,
+                                 final String max, final TextCallback callback) {
         final Activity activity = mActivity;
         if (activity == null || activity.isFinishing()) {
             callback.dismiss();
@@ -813,31 +813,21 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
         final AlertDialog.Builder builder = new AlertDialog.Builder(activity, R.style.DialogStyle);
         builder.setTitle(title)
                 .setNegativeButton(android.R.string.cancel, /* onClickListener */ null)
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(final DialogInterface dialog, final int which) {
-                        callback.grant();
-                    }
-                });
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> callback.grant());
 
         final AlertDialog dialog = builder.create();
-        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(final DialogInterface dialog) {
-                callback.reject();
-            }
-        });
+        dialog.setOnDismissListener(dialog1 -> callback.reject());
         dialog.show();
     }
 
     private Spinner addMediaSpinner(final Context context, final ViewGroup container,
-                                    final MediaSource[] sources) {
+                                    final MediaSource[] sources, final String[] sourceNames) {
         final ArrayAdapter<MediaSource> adapter = new ArrayAdapter<MediaSource>(
                 context, android.R.layout.simple_spinner_item) {
             private View convertView(final int position, final View view) {
                 if (view != null) {
                     final MediaSource item = getItem(position);
-                    ((TextView) view).setText(item.name);
+                    ((TextView) view).setText(sourceNames != null ? sourceNames[position] : item.name);
                 }
                 return view;
             }
@@ -864,51 +854,44 @@ public final class GeckoViewPrompt implements GeckoSession.PromptDelegate {
         return spinner;
     }
 
-    public void promptForMedia(final GeckoSession session, final String title,
-                               final MediaSource[] video, final MediaSource[] audio,
-                               final GeckoSession.PermissionDelegate.MediaCallback callback) {
+    public void onMediaPrompt(final GeckoSession session, final String title,
+                              final MediaSource[] video, final MediaSource[] audio,
+                              final String[] videoNames, final String[] audioNames,
+                              final GeckoSession.PermissionDelegate.MediaCallback callback) {
         final Activity activity = mActivity;
-        if (activity == null || activity.isFinishing() || (video == null && audio == null)) {
+        if (activity == null || (video == null && audio == null)) {
             callback.reject();
             return;
         }
-        final AlertDialog.Builder builder = new AlertDialog.Builder(activity, R.style.DialogStyle);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         final LinearLayout container = addStandardLayout(builder, title, /* msg */ null);
 
         final Spinner videoSpinner;
         if (video != null) {
-            videoSpinner = addMediaSpinner(builder.getContext(), container, video);
+            videoSpinner = addMediaSpinner(builder.getContext(), container, video, videoNames);
         } else {
             videoSpinner = null;
         }
 
         final Spinner audioSpinner;
         if (audio != null) {
-            audioSpinner = addMediaSpinner(builder.getContext(), container, audio);
+            audioSpinner = addMediaSpinner(builder.getContext(), container, audio, audioNames);
         } else {
             audioSpinner = null;
         }
 
         builder.setNegativeButton(android.R.string.cancel, /* listener */ null)
                 .setPositiveButton(android.R.string.ok,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(final DialogInterface dialog, final int which) {
-                                final MediaSource video = (videoSpinner != null)
-                                        ? (MediaSource) videoSpinner.getSelectedItem() : null;
-                                final MediaSource audio = (audioSpinner != null)
-                                        ? (MediaSource) audioSpinner.getSelectedItem() : null;
-                                callback.grant(video, audio);
-                            }
+                        (dialog, which) -> {
+                            final MediaSource video1 = (videoSpinner != null)
+                                    ? (MediaSource) videoSpinner.getSelectedItem() : null;
+                            final MediaSource audio1 = (audioSpinner != null)
+                                    ? (MediaSource) audioSpinner.getSelectedItem() : null;
+                            callback.grant(video1, audio1);
                         });
 
         final AlertDialog dialog = builder.create();
-        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(final DialogInterface dialog) {
-                callback.reject();
-            }
-        });
+        dialog.setOnDismissListener(dialog1 -> callback.reject());
         dialog.show();
     }
 }

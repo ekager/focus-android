@@ -44,6 +44,10 @@ import java.util.HashMap
 class SystemWebView(context: Context, attrs: AttributeSet) : NestedWebView(context, attrs), IWebView,
     SharedPreferences.OnSharedPreferenceChangeListener {
 
+    override fun onPermissionGranted(requestCode: Int, grantResults: IntArray?) {
+        // Do nothing
+    }
+
     private var callback: IWebView.Callback? = null
     private val client: FocusWebViewClient = FocusWebViewClient(getContext().applicationContext)
     private val linkHandler: LinkHandler

@@ -465,6 +465,15 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     @Suppress("ComplexMethod")
     override fun createCallback(): IWebView.Callback {
         return SessionCallbackProxy(session, object : IWebView.Callback {
+            override fun requestPermissions(
+                permissions: Array<String>,
+                androidPermissionRequestCode: Int
+            ) {
+                Log.v("Permissions", "Request in callback $androidPermissionRequestCode and $permissions")
+                val activity = activity ?: return
+                ActivityCompat.requestPermissions(activity, permissions, androidPermissionRequestCode)
+            }
+
             override fun onPageStarted(url: String) {}
 
             override fun onPageFinished(isSecure: Boolean) {}
@@ -637,18 +646,24 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        if (requestCode != REQUEST_CODE_STORAGE_PERMISSION) {
+        Log.v("Permissions", "Requestpermissionresult $requestCode and ${permissions[0]} and $grantResults")
+
+        if (requestCode != REQUEST_CODE_STORAGE_PERMISSION || requestCode != REQUEST_CODE_GECKOVIEW_PERMISSION) {
             return
         }
 
-        if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            // We didn't get the storage permission: We are not able to start this download.
-            pendingDownload = null
-        }
+        if (requestCode == REQUEST_CODE_STORAGE_PERMISSION) {
+            if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                // We didn't get the storage permission: We are not able to start this download.
+                pendingDownload = null
+            }
 
-        // The actual download dialog will be shown from onResume(). If this activity/fragment is
-        // getting restored then we need to 'resume' first before we can show a dialog (attaching
-        // another fragment).
+            // The actual download dialog will be shown from onResume(). If this activity/fragment is
+            // getting restored then we need to 'resume' first before we can show a dialog (attaching
+            // another fragment).
+        } else if (requestCode == REQUEST_CODE_GECKOVIEW_PERMISSION) {
+            getWebView()?.onPermissionGranted(requestCode, grantResults)
+        }
     }
 
     internal fun showDownloadPromptDialog(download: Download) {
@@ -1436,6 +1451,8 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         const val FRAGMENT_TAG = "browser"
 
         private const val REQUEST_CODE_STORAGE_PERMISSION = 101
+        private const val REQUEST_CODE_GECKOVIEW_PERMISSION = 400
+
         private const val ANIMATION_DURATION = 300
 
         private const val ARGUMENT_SESSION_UUID = "sessionUUID"
