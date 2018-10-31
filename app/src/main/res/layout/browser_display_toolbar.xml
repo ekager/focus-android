@@ -16,7 +16,6 @@
         android:layout_height="56dp"
         android:background="@drawable/animated_background"
         android:elevation="4dp"
-        app:layout_scrollFlags="scroll|enterAlways|snap|exitUntilCollapsed"
         android:clipChildren="false">
 
         <include

@@ -26,6 +26,10 @@ import android.os.Environment
 import android.preference.PreferenceManager
 import android.support.annotation.RequiresApi
 import android.support.design.widget.AppBarLayout
+import android.support.design.widget.AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
+import android.support.design.widget.AppBarLayout.LayoutParams.SCROLL_FLAG_EXIT_UNTIL_COLLAPSED
+import android.support.design.widget.AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL
+import android.support.design.widget.AppBarLayout.LayoutParams.SCROLL_FLAG_SNAP
 import android.support.design.widget.CoordinatorLayout
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
@@ -96,6 +100,7 @@ import org.mozilla.focus.utils.ViewUtils
 import org.mozilla.focus.web.Download
 import org.mozilla.focus.web.HttpAuthenticationDialogBuilder
 import org.mozilla.focus.web.IWebView
+import org.mozilla.focus.webview.NestedWebView
 import org.mozilla.focus.widget.AnimatedProgressBar
 import org.mozilla.focus.widget.FloatingEraseButton
 import org.mozilla.focus.widget.FloatingSessionsButton
@@ -1408,6 +1413,31 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
             val menu = menuWeakReference!!.get()
             menu?.updateLoading(loading)
+
+            // Currently only works for WV
+            if (!AppConstants.isGeckoBuild) {
+                val canScroll =
+                    if (!AppConstants.isGeckoBuild) (getWebView() as NestedWebView).canScrollVertically(
+                        1
+                    ) else
+                        (getWebView() as NestedGeckoView).canScrollVertically(1)
+                if (canScroll) {
+                    val params = urlBar!!.layoutParams as AppBarLayout.LayoutParams
+                    params.scrollFlags = SCROLL_FLAG_SCROLL or SCROLL_FLAG_ENTER_ALWAYS or
+                            SCROLL_FLAG_SNAP or SCROLL_FLAG_EXIT_UNTIL_COLLAPSED
+                    urlBar?.layoutParams = params
+                } else {
+                    val params = urlBar!!.layoutParams as AppBarLayout.LayoutParams
+                    params.scrollFlags = 0
+                    urlBar?.layoutParams = params
+                }
+            } else {
+                // We need to set flags for GV now
+                val params = urlBar!!.layoutParams as AppBarLayout.LayoutParams
+                params.scrollFlags = SCROLL_FLAG_SCROLL or SCROLL_FLAG_ENTER_ALWAYS or
+                        SCROLL_FLAG_SNAP or SCROLL_FLAG_EXIT_UNTIL_COLLAPSED
+                urlBar?.layoutParams = params
+            }
 
             hideFindInPage()
         }
