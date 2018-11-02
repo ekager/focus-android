@@ -4,10 +4,10 @@
 
 package org.mozilla.focus.utils
 
-import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.ReceiveChannel
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.selects.whileSelect
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.whileSelect
 import java.util.concurrent.TimeUnit
 
 /**

@@ -26,7 +26,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import kotlinx.android.synthetic.main.fragment_urlinput.*
 import kotlinx.android.synthetic.main.fragment_urlinput.view.*
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.launch
 import mozilla.components.browser.domains.CustomDomains
 import mozilla.components.browser.domains.DomainAutoCompleteProvider
 import mozilla.components.browser.session.Session

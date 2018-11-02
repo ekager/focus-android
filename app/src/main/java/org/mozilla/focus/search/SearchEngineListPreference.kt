@@ -15,8 +15,8 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.CompoundButton
 import android.widget.RadioGroup
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.android.UI
+import kotlinx.coroutines.launch
 import mozilla.components.browser.search.SearchEngine
 import org.mozilla.focus.R
 import org.mozilla.focus.ext.components

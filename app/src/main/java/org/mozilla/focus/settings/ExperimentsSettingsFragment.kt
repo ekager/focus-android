@@ -9,7 +9,7 @@ import android.os.Bundle
 import android.support.v7.preference.PreferenceFragmentCompat
 import android.support.v7.preference.SwitchPreferenceCompat
 import com.jakewharton.processphoenix.ProcessPhoenix
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.launch
 import org.mozilla.focus.IO
 import org.mozilla.focus.R
 import org.mozilla.focus.utils.AppConstants

@@ -6,12 +6,12 @@ package org.mozilla.focus.searchsuggestions
 
 import android.arch.lifecycle.LiveData
 import android.arch.lifecycle.MutableLiveData
-import kotlinx.coroutines.experimental.CommonPool
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.consumeEach
+import kotlinx.coroutines.CommonPool
+import kotlinx.coroutines.android.UI
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import mozilla.components.browser.search.suggestions.SearchSuggestionClient
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.launch
 import mozilla.components.browser.search.SearchEngine
 import okhttp3.OkHttpClient
 import okhttp3.Request
