@@ -97,7 +97,6 @@ import org.mozilla.focus.web.Download
 import org.mozilla.focus.web.HttpAuthenticationDialogBuilder
 import org.mozilla.focus.web.IWebView
 import org.mozilla.focus.widget.AnimatedProgressBar
-import org.mozilla.focus.widget.FloatingEraseButton
 import org.mozilla.focus.widget.FloatingSessionsButton
 import java.lang.ref.WeakReference
 import java.net.MalformedURLException
@@ -348,7 +347,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     }
 
     private fun initialiseNormalBrowserUi(view: View) {
-        val eraseButton = view.findViewById<FloatingEraseButton>(R.id.erase)
+        val eraseButton = view.findViewById<ImageButton>(R.id.erase)
         eraseButton.setOnClickListener(this)
 
         urlView!!.setOnClickListener(this)
@@ -360,26 +359,24 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         sessionManager.register(object : SessionManager.Observer {
             override fun onSessionAdded(session: Session) {
                 tabsButton.updateSessionsCount(sessionManager.sessions.size)
-                eraseButton.updateSessionsCount(sessionManager.sessions.size)
             }
 
             override fun onSessionRemoved(session: Session) {
                 tabsButton.updateSessionsCount(sessionManager.sessions.size)
-                eraseButton.updateSessionsCount(sessionManager.sessions.size)
             }
 
             override fun onAllSessionsRemoved() {
                 tabsButton.updateSessionsCount(sessionManager.sessions.size)
-                eraseButton.updateSessionsCount(sessionManager.sessions.size)
             }
         })
 
         tabsButton.updateSessionsCount(sessionManager.sessions.size)
-        eraseButton.updateSessionsCount(sessionManager.sessions.size)
     }
 
     private fun initialiseCustomTabUi(view: View) {
         val customTabConfig = session.customTabConfig!!
+        val erase = view.findViewById<ImageButton>(R.id.erase)
+        erase.visibility = View.GONE
 
         // Unfortunately there's no simpler way to have the FAB only in normal-browser mode.
         // - ViewStub: requires splitting attributes for the FAB between the ViewStub, and actual FAB layout file.
@@ -387,12 +384,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         // - View.GONE: doesn't work because the layout-behaviour makes the FAB visible again when scrolling.
         // - Adding at runtime: works, but then we need to use a separate layout file (and you need
         //   to set some attributes programatically, same as ViewStub).
-        val erase = view.findViewById<FloatingEraseButton>(R.id.erase)
-        val eraseContainer = erase.parent as ViewGroup
-        eraseContainer.removeView(erase)
-
         val sessions = view.findViewById<FloatingSessionsButton>(R.id.tabs)
-        eraseContainer.removeView(sessions)
+        val sessionContainer = sessions.parent as ViewGroup
+        sessionContainer.removeView(sessions)
 
         val textColor: Int
 
@@ -718,7 +712,6 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
         crash_container.visibility = View.VISIBLE
         tabs.hide()
-        erase.hide()
         securityView?.setImageResource(R.drawable.ic_firefox)
         menuView?.visibility = View.GONE
         urlView?.text = requireContext().getString(R.string.tab_crash_report_title)
@@ -736,7 +729,6 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
         crash_container.visibility = View.GONE
         tabs.show()
-        erase.show()
         securityView?.setImageResource(R.drawable.ic_internet)
         menuView?.visibility = View.VISIBLE
         urlView?.text = session.let {
