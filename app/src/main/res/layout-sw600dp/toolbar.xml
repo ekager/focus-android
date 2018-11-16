@@ -50,8 +50,20 @@
         android:contentDescription="@string/content_description_forward"
         android:src="@drawable/ic_forward" />
 
+    <ImageButton
+        android:id="@+id/trackingProtectionInfo"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_vertical"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/preference_category_tracking_protection"
+        android:focusable="true"
+        android:src="@drawable/ic_tracking_protection" />
+
     <ImageView
         android:id="@+id/security_info"
+        android:visibility="gone"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:layout_gravity="center_vertical"

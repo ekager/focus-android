@@ -51,6 +51,7 @@ import android.widget.TextView
 import android.widget.Toast
 import kotlinx.android.synthetic.main.browser_display_toolbar.*
 import kotlinx.android.synthetic.main.fragment_browser.*
+import kotlinx.android.synthetic.main.toolbar.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -80,6 +81,7 @@ import org.mozilla.focus.menu.context.WebContextMenu
 import org.mozilla.focus.observer.LoadTimeObserver
 import org.mozilla.focus.open.OpenWithFragment
 import org.mozilla.focus.popup.PopupUtils
+import org.mozilla.focus.popup.SecurityTrackingProtectionPopUp
 import org.mozilla.focus.session.SessionCallbackProxy
 import org.mozilla.focus.session.removeAndCloseAllSessions
 import org.mozilla.focus.session.removeAndCloseSession
@@ -116,7 +118,6 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     private var backgroundTransitionGroup: TransitionDrawableGroup? = null
     private var urlView: TextView? = null
     private var progressView: AnimatedProgressBar? = null
-    private var blockView: FrameLayout? = null
     private var securityView: ImageView? = null
     private var menuView: ImageButton? = null
     private var statusBar: View? = null
@@ -304,15 +305,10 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         backButton = view.findViewById(R.id.back)
         backButton?.let { it.setOnClickListener(this) }
 
-        val blockIcon = view.findViewById<View>(R.id.block_image) as ImageView
-        blockIcon.setImageResource(R.drawable.ic_tracking_protection_disabled)
-
-        blockView = view.findViewById<View>(R.id.block) as FrameLayout
+        trackingProtectionInfo?.setOnClickListener(this)
 
         securityView = view.findViewById(R.id.security_info)
-
         securityView!!.setImageResource(R.drawable.ic_internet)
-
         securityView!!.setOnClickListener(this)
 
         menuView = view.findViewById<View>(R.id.menuView) as ImageButton
@@ -1149,7 +1145,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
                 showAddToHomescreenDialog(url, title)
             }
 
-            R.id.security_info -> if (!crashReporterIsVisible()) { showSecurityPopUp() }
+            R.id.trackingProtectionInfo -> if (!crashReporterIsVisible()) { showSecurityPopUp() }
 
             R.id.report_site_issue -> {
                 val reportUrl = String.format(SupportUtils.REPORT_SITE_ISSUE_URL, url)
@@ -1285,9 +1281,11 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         }
     }
 
-    // In the future, if more badging icons are needed, this should be abstracted
-    fun updateBlockingBadging(enabled: Boolean) {
-        blockView!!.visibility = if (enabled) View.GONE else View.VISIBLE
+    fun updateTrackingProtectionIcon(enabled: Boolean) {
+        trackingProtectionInfo?.setImageResource(
+            if (enabled) R.drawable.ic_tracking_protection else
+                R.drawable.ic_tracking_protection_disabled
+        )
     }
 
     override fun onLongClick(view: View): Boolean {
@@ -1419,7 +1417,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
                 updateSecurityIcon(session)
             }
 
-            updateBlockingBadging(loading || session.trackerBlockingEnabled)
+            updateTrackingProtectionIcon(loading || session.trackerBlockingEnabled)
 
             updateToolbarButtonStates(loading)
 
