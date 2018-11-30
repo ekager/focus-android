@@ -100,7 +100,8 @@ import org.mozilla.focus.widget.AnimatedProgressBar
 import org.mozilla.focus.widget.FloatingEraseButton
 import org.mozilla.focus.widget.FloatingSessionsButton
 import java.lang.ref.WeakReference
-import java.net.URI
+import java.net.MalformedURLException
+import java.net.URL
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -1439,7 +1440,12 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         }
 
         override fun onUrlChanged(session: Session, url: String) {
-            val host = URI(url).host
+            val host = try {
+                URL(url).host
+            } catch (_: MalformedURLException) {
+                url
+            }
+
             val isException =
                 host != null && ExceptionDomains.load(requireContext()).contains(host)
             getWebView()?.setBlockingEnabled(!isException)
