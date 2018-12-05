@@ -10,14 +10,9 @@ import android.app.PendingIntent
 import android.arch.lifecycle.LifecycleObserver
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ProcessLifecycleOwner
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.TransitionDrawable
 import android.net.Uri
 import android.os.Build
@@ -34,7 +29,6 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -43,17 +37,11 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
-import android.webkit.URLUtil
-import android.widget.FrameLayout
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import kotlinx.android.synthetic.main.browser_display_toolbar.*
 import kotlinx.android.synthetic.main.fragment_browser.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.android.synthetic.main.toolbar.*
+import kotlinx.coroutines.*
 import mozilla.components.browser.session.Session
 import mozilla.components.browser.session.SessionManager
 import mozilla.components.lib.crash.Crash
@@ -77,27 +65,19 @@ import org.mozilla.focus.gecko.NestedGeckoView
 import org.mozilla.focus.locale.LocaleAwareAppCompatActivity
 import org.mozilla.focus.menu.browser.BrowserMenu
 import org.mozilla.focus.menu.context.WebContextMenu
+import org.mozilla.focus.menu.trackingprotection.TrackingProtectionMenu
 import org.mozilla.focus.observer.LoadTimeObserver
 import org.mozilla.focus.open.OpenWithFragment
-import org.mozilla.focus.popup.PopupUtils
 import org.mozilla.focus.session.SessionCallbackProxy
 import org.mozilla.focus.session.removeAndCloseAllSessions
-import org.mozilla.focus.session.removeAndCloseSession
 import org.mozilla.focus.session.ui.SessionsSheetFragment
 import org.mozilla.focus.telemetry.CrashReporterWrapper
 import org.mozilla.focus.telemetry.TelemetryWrapper
-import org.mozilla.focus.utils.AppConstants
-import org.mozilla.focus.utils.Browsers
-import org.mozilla.focus.utils.Features
-import org.mozilla.focus.utils.StatusBarUtils
-import org.mozilla.focus.utils.SupportUtils
-import org.mozilla.focus.utils.UrlUtils
-import org.mozilla.focus.utils.ViewUtils
+import org.mozilla.focus.utils.*
 import org.mozilla.focus.web.Download
 import org.mozilla.focus.web.HttpAuthenticationDialogBuilder
 import org.mozilla.focus.web.IWebView
 import org.mozilla.focus.widget.AnimatedProgressBar
-import org.mozilla.focus.widget.FloatingEraseButton
 import org.mozilla.focus.widget.FloatingSessionsButton
 import java.lang.ref.WeakReference
 import java.net.MalformedURLException
@@ -117,14 +97,15 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     private var backgroundTransitionGroup: TransitionDrawableGroup? = null
     private var urlView: TextView? = null
     private var progressView: AnimatedProgressBar? = null
-    private var blockView: FrameLayout? = null
-    private var securityView: ImageView? = null
+    private var trackingProtectionView: ImageButton? = null
     private var menuView: ImageButton? = null
     private var statusBar: View? = null
     private var urlBar: View? = null
     private var popupTint: FrameLayout? = null
     private var swipeRefresh: SwipeRefreshLayout? = null
     private var menuWeakReference: WeakReference<BrowserMenu>? = WeakReference<BrowserMenu>(null)
+    private var trackingProtectionMenuWeakReference: WeakReference<TrackingProtectionMenu>? =
+        WeakReference<TrackingProtectionMenu>(null)
 
     /**
      * Container for custom video views shown in fullscreen mode.
@@ -212,6 +193,13 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
             menu.dismiss()
 
             menuWeakReference!!.clear()
+        }
+
+        val tpMenu = trackingProtectionMenuWeakReference!!.get()
+        if (tpMenu != null) {
+            tpMenu.dismiss()
+
+            trackingProtectionMenuWeakReference!!.clear()
         }
     }
 
@@ -305,16 +293,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         backButton = view.findViewById(R.id.back)
         backButton?.let { it.setOnClickListener(this) }
 
-        val blockIcon = view.findViewById<View>(R.id.block_image) as ImageView
-        blockIcon.setImageResource(R.drawable.ic_tracking_protection_disabled)
-
-        blockView = view.findViewById<View>(R.id.block) as FrameLayout
-
-        securityView = view.findViewById(R.id.security_info)
-
-        securityView!!.setImageResource(R.drawable.ic_internet)
-
-        securityView!!.setOnClickListener(this)
+        trackingProtectionView = view.findViewById(R.id.tracking_protection_info)
+        trackingProtectionView!!.setOnClickListener(this)
+        updateTrackingProtectionView(session)
 
         menuView = view.findViewById<View>(R.id.menuView) as ImageButton
         menuView!!.setOnClickListener(this)
@@ -348,7 +329,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
     }
 
     private fun initialiseNormalBrowserUi(view: View) {
-        val eraseButton = view.findViewById<FloatingEraseButton>(R.id.erase)
+        val eraseButton = view.findViewById<ImageButton>(R.id.erase)
         eraseButton.setOnClickListener(this)
 
         urlView!!.setOnClickListener(this)
@@ -360,26 +341,24 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         sessionManager.register(object : SessionManager.Observer {
             override fun onSessionAdded(session: Session) {
                 tabsButton.updateSessionsCount(sessionManager.sessions.size)
-                eraseButton.updateSessionsCount(sessionManager.sessions.size)
             }
 
             override fun onSessionRemoved(session: Session) {
                 tabsButton.updateSessionsCount(sessionManager.sessions.size)
-                eraseButton.updateSessionsCount(sessionManager.sessions.size)
             }
 
             override fun onAllSessionsRemoved() {
                 tabsButton.updateSessionsCount(sessionManager.sessions.size)
-                eraseButton.updateSessionsCount(sessionManager.sessions.size)
             }
         })
 
         tabsButton.updateSessionsCount(sessionManager.sessions.size)
-        eraseButton.updateSessionsCount(sessionManager.sessions.size)
     }
 
     private fun initialiseCustomTabUi(view: View) {
         val customTabConfig = session.customTabConfig!!
+        val erase = view.findViewById<ImageButton>(R.id.erase)
+        erase.visibility = View.GONE
 
         // Unfortunately there's no simpler way to have the FAB only in normal-browser mode.
         // - ViewStub: requires splitting attributes for the FAB between the ViewStub, and actual FAB layout file.
@@ -387,12 +366,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         // - View.GONE: doesn't work because the layout-behaviour makes the FAB visible again when scrolling.
         // - Adding at runtime: works, but then we need to use a separate layout file (and you need
         //   to set some attributes programatically, same as ViewStub).
-        val erase = view.findViewById<FloatingEraseButton>(R.id.erase)
-        val eraseContainer = erase.parent as ViewGroup
-        eraseContainer.removeView(erase)
-
         val sessions = view.findViewById<FloatingSessionsButton>(R.id.tabs)
-        eraseContainer.removeView(sessions)
+        val sessionContainer = sessions.parent as ViewGroup
+        sessionContainer.removeView(sessions)
 
         val textColor: Int
 
@@ -463,7 +439,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         }
 
         // We need to tint some icons.. We already tinted the close button above. Let's tint our other icons too.
-        securityView!!.setColorFilter(textColor)
+        trackingProtectionView!!.setColorFilter(textColor)
 
         val menuIcon = DrawableUtils.loadAndTintDrawable(requireContext(), R.drawable.ic_menu, textColor)
         menuView!!.setImageDrawable(menuIcon)
@@ -498,7 +474,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
             override fun countBlockedTracker() {}
 
-            override fun resetBlockedTrackers() {}
+            override fun resetBlockedTrackers() {
+                tracking_protection_count?.text = 0.toString()
+            }
 
             override fun onBlockingStateChanged(isBlockingEnabled: Boolean) {}
 
@@ -718,9 +696,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
         crash_container.visibility = View.VISIBLE
         tabs.hide()
-        erase.hide()
-        securityView?.setImageResource(R.drawable.ic_firefox)
+        trackingProtectionView?.setImageResource(R.drawable.ic_firefox)
         menuView?.visibility = View.GONE
+        erase?.visibility = View.GONE
         urlView?.text = requireContext().getString(R.string.tab_crash_report_title)
     }
 
@@ -736,9 +714,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
         crash_container.visibility = View.GONE
         tabs.show()
-        erase.show()
-        securityView?.setImageResource(R.drawable.ic_internet)
+        trackingProtectionView?.setImageResource(R.drawable.ic_tracking_protection_cutout)
         menuView?.visibility = View.VISIBLE
+        erase?.visibility = View.VISIBLE
         urlView?.text = session.let {
             if (it.isSearch) it.searchTerms else it.url
         }
@@ -984,7 +962,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
 
         webView?.cleanup()
 
-        requireComponents.sessionManager.removeAndCloseSession(session)
+        requireComponents.sessionManager.removeAndCloseAllSessions()
     }
 
     private fun shareCurrentUrl() {
@@ -1157,7 +1135,9 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
                 showAddToHomescreenDialog(url, title)
             }
 
-            R.id.security_info -> if (!crashReporterIsVisible()) { showSecurityPopUp() }
+            R.id.tracking_protection_info -> if (!crashReporterIsVisible()) {
+                showTrackingProtectionMenu()
+            }
 
             R.id.report_site_issue -> {
                 val reportUrl = String.format(SupportUtils.REPORT_SITE_ISSUE_URL, url)
@@ -1274,28 +1254,11 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         getWebView()?.setRequestDesktop(enabled)
     }
 
-    private fun showSecurityPopUp() {
-        // Don't show Security Popup if the page is loading
-        if (session.loading) {
-            return
-        }
-        val securityPopup = PopupUtils.createSecurityPopup(requireContext(), session)
-        if (securityPopup != null) {
-            securityPopup.setOnDismissListener { popupTint!!.visibility = View.GONE }
-            securityPopup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            securityPopup.animationStyle = android.R.style.Animation_Dialog
-            securityPopup.isTouchable = true
-            securityPopup.isFocusable = true
-            securityPopup.elevation = resources.getDimension(R.dimen.menu_elevation)
-            val offsetY = requireContext().resources.getDimensionPixelOffset(R.dimen.doorhanger_offsetY)
-            securityPopup.showAtLocation(urlBar, Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, offsetY)
-            popupTint!!.visibility = View.VISIBLE
-        }
-    }
+    private fun showTrackingProtectionMenu() {
+        val menu = TrackingProtectionMenu(requireActivity(), this)
+        menu.show(trackingProtectionView!!)
 
-    // In the future, if more badging icons are needed, this should be abstracted
-    fun updateBlockingBadging(enabled: Boolean) {
-        blockView!!.visibility = if (enabled) View.GONE else View.VISIBLE
+        trackingProtectionMenuWeakReference = WeakReference(menu)
     }
 
     override fun onLongClick(view: View): Boolean {
@@ -1349,24 +1312,16 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
             ?.commit()
     }
 
-    private fun updateSecurityIcon(session: Session, securityInfo: Session.SecurityInfo = session.securityInfo) {
+    private fun updateTrackingProtectionView(session: Session) {
         if (crashReporterIsVisible()) return
-        val securityView = securityView ?: return
+        val tpView = trackingProtectionView ?: return
 
-        if (!session.loading) {
-            if (securityInfo.secure) {
-                securityView.setImageResource(R.drawable.ic_lock)
-            } else {
-                if (URLUtil.isHttpUrl(url)) {
-                    // HTTP site
-                    securityView.setImageResource(R.drawable.ic_internet)
-                } else {
-                    // Certificate is bad
-                    securityView.setImageResource(R.drawable.ic_warning)
-                }
-            }
+        if (session.trackerBlockingEnabled) {
+            tpView.setImageResource(R.drawable.ic_tracking_protection_cutout)
+            tracking_protection_count?.visibility = View.VISIBLE
         } else {
-            securityView.setImageResource(R.drawable.ic_internet)
+            tpView.setImageResource(R.drawable.ic_tracking_protection_disabled)
+            tracking_protection_count?.visibility = View.INVISIBLE
         }
     }
 
@@ -1423,11 +1378,7 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
                     progressView!!.visibility = View.GONE
                 }
                 swipeRefresh!!.isRefreshing = false
-
-                updateSecurityIcon(session)
             }
-
-            updateBlockingBadging(loading || session.trackerBlockingEnabled)
 
             updateToolbarButtonStates(loading)
 
@@ -1458,19 +1409,29 @@ class BrowserFragment : WebFragment(), LifecycleObserver, View.OnClickListener,
         }
 
         override fun onTrackerBlocked(session: Session, blocked: String, all: List<String>) {
-            menuWeakReference?.let {
+            GlobalScope.launch(Dispatchers.Main) {
+                trackingProtectionView?.setImageResource(R.drawable.ic_tracking_protection_cutout)
+                tracking_protection_count?.visibility = View.VISIBLE
+                tracking_protection_count?.text = all.size.toString()
+                trackingProtectionMenuWeakReference?.let {
+                    val menu = it.get()
+
+                    menu?.updateTrackers(all.size)
+                }
+            }
+        }
+
+        override fun onSecurityChanged(session: Session, securityInfo: Session.SecurityInfo) {
+            trackingProtectionMenuWeakReference?.let {
                 val menu = it.get()
 
-                menu?.updateTrackers(all.size)
+                menu?.updateSecurity(session)
             }
         }
 
         override fun onTrackerBlockingEnabledChanged(session: Session, blockingEnabled: Boolean) {
+            updateTrackingProtectionView(session)
             setBlockingUI(blockingEnabled)
-        }
-
-        override fun onSecurityChanged(session: Session, securityInfo: Session.SecurityInfo) {
-            updateSecurityIcon(session, securityInfo)
         }
     }
 

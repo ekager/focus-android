@@ -5,14 +5,12 @@
 package org.mozilla.focus.session
 
 import android.view.View
-
-import org.mozilla.focus.web.Download
-import org.mozilla.focus.web.IWebView
-
 import mozilla.components.browser.session.Session
 import org.mozilla.focus.ext.isSearch
 import org.mozilla.focus.ext.shouldRequestDesktopSite
 import org.mozilla.focus.utils.AppConstants
+import org.mozilla.focus.web.Download
+import org.mozilla.focus.web.IWebView
 
 @Suppress("TooManyFunctions")
 class SessionCallbackProxy(private val session: Session, private val delegate: IWebView.Callback) : IWebView.Callback {
@@ -90,6 +88,7 @@ class SessionCallbackProxy(private val session: Session, private val delegate: I
 
     override fun resetBlockedTrackers() {
         session.trackersBlocked = emptyList()
+        delegate.resetBlockedTrackers()
     }
 
     override fun onBlockingStateChanged(isBlockingEnabled: Boolean) {

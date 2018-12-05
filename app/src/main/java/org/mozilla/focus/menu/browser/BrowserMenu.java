@@ -18,10 +18,11 @@ import android.view.ViewGroup;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
-import mozilla.components.browser.session.tab.CustomTabConfig;
 import org.mozilla.focus.R;
 import org.mozilla.focus.fragment.BrowserFragment;
 import org.mozilla.focus.utils.ViewUtils;
+
+import mozilla.components.browser.session.tab.CustomTabConfig;
 
 /**
  * The overflow menu shown in the BrowserFragment containing page actions like "Refresh", "Share" etc.
@@ -54,10 +55,6 @@ public class BrowserMenu extends PopupWindow {
         setWidth(ViewGroup.LayoutParams.WRAP_CONTENT);
 
         setElevation(context.getResources().getDimension(R.dimen.menu_elevation));
-    }
-
-    public void updateTrackers(int trackers) {
-        adapter.updateTrackers(trackers);
     }
 
     public void updateLoading(boolean loading) {
