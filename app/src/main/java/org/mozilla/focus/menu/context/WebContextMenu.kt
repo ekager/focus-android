@@ -46,7 +46,8 @@ import org.mozilla.focus.web.IWebView
  */
 object WebContextMenu {
     private fun createTitleView(context: Context, title: String): View {
-        val titleView = LayoutInflater.from(context).inflate(R.layout.context_menu_title, null) as TextView
+        val titleView =
+            LayoutInflater.from(context).inflate(R.layout.context_menu_title, null) as TextView
         titleView.text = title
         return titleView
     }
@@ -60,19 +61,17 @@ object WebContextMenu {
     ) {
 
         if (!hitResult.isLink() && !hitResult.isImage()) {
-            // We don't support any other classes yet:
-            throw IllegalStateException("WebContextMenu can only handle long-presses on images and/or links.")
+            // We don't support any other classes yet but let's not crash
+            return
         }
 
         TelemetryWrapper.openWebContextMenuEvent()
 
         val builder = AlertDialog.Builder(context)
 
-        builder.setCustomTitle(when (hitResult) {
-            is HitResult.UNKNOWN -> createTitleView(context, hitResult.src)
-            is HitResult.IMAGE_SRC -> createTitleView(context, hitResult.uri)
-            else -> createTitleView(context, hitResult.src)
-        })
+        builder.setCustomTitle(
+            createTitleView(context, hitResult.getLink())
+        )
 
         val view = LayoutInflater.from(context).inflate(R.layout.context_menu, null)
         builder.setView(view)
@@ -184,7 +183,7 @@ object WebContextMenu {
                 }
                 R.id.menu_open_in_focus -> {
                     // Open selected link in Focus and navigate there
-                    val newSession = Session(hitResult.src, source = Session.Source.MENU)
+                    val newSession = Session(hitResult.getLink(), source = Session.Source.MENU)
                     context.components.sessionManager.add(newSession, selected = true)
 
                     val intent = Intent(context, MainActivity::class.java)
@@ -226,7 +225,7 @@ object WebContextMenu {
                     TelemetryWrapper.shareLinkEvent()
                     val shareIntent = Intent(Intent.ACTION_SEND)
                     shareIntent.type = "text/plain"
-                    shareIntent.putExtra(Intent.EXTRA_TEXT, hitResult.src)
+                    shareIntent.putExtra(Intent.EXTRA_TEXT, hitResult.getLink())
                     dialog.context.startActivity(
                             Intent.createChooser(
                                     shareIntent,
@@ -282,7 +281,8 @@ object WebContextMenu {
         (this is HitResult.IMAGE || this is HitResult.IMAGE_SRC) && src.isNotEmpty()
 
     private fun HitResult.isLink(): Boolean =
-        this.getLink() != "about:blank"
+        ((this is HitResult.UNKNOWN && src.isNotEmpty()) || this is HitResult.IMAGE_SRC) &&
+                getLink().startsWith("http")
 
     private fun HitResult.getLink(): String = when (this) {
         is HitResult.UNKNOWN -> src
